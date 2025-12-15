@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
+# Svalinn Project - Vordr (The Warden)
+# High-Assurance Daemonless Container Engine
+
+[package]
+name = "vordr"
+version = "0.1.0"
+edition = "2021"
+authors = ["Svalinn Project <team@svalinnproject.org>"]
+description = "High-assurance daemonless container engine with formally verified security"
+license = "MIT OR AGPL-3.0-or-later"
+repository = "https://github.com/svalinnproject/svalinn"
+homepage = "https://svalinnproject.org"
+readme = "README.md"
+keywords = ["container", "oci", "security", "formal-verification", "spark"]
+categories = ["command-line-utilities", "virtualization"]
+
+[dependencies]
+# OCI Specification
+oci-spec = "0.7"
+
+# Communication
+ttrpc = "0.8"
+
+# State Management
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Serialisation
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error Handling
+thiserror = "2"
+anyhow = "1"
+
+# HTTP Client (for registry)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Utilities
+uuid = { version = "1", features = ["v4"] }
+which = "7"
+nix = { version = "0.29", features = ["user", "process", "signal", "fs"] }
+libc = "0.2"
+sha2 = "0.10"
+hex = "0.4"
+tempfile = "3"
+walkdir = "2"
+flate2 = "1"
+tar = "0.4"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[build-dependencies]
+cc = "1"  # For linking Ada
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+
+[[bin]]
+name = "vordr"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+# Keep debug info for development
+debug = true
