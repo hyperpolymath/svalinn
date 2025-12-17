@@ -8,7 +8,7 @@ use std::path::Path;
 use crate::cli::Cli;
 use crate::engine::StateManager;
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum NetworkCommands {
     /// Create a network
     Create {

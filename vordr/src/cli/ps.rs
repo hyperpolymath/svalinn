@@ -9,7 +9,7 @@ use crate::cli::Cli;
 use crate::engine::{ContainerState, StateManager};
 
 /// Arguments for the `ps` command
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct PsArgs {
     /// Show all containers (default shows only running)
     #[arg(short, long)]

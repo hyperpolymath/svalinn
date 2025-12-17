@@ -9,7 +9,7 @@ use crate::cli::Cli;
 use crate::engine::{ContainerState, StateManager};
 
 /// Arguments for the `exec` command
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct ExecArgs {
     /// Container ID or name
     pub container: String,

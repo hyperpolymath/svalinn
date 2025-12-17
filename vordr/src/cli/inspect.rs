@@ -10,7 +10,7 @@ use crate::cli::Cli;
 use crate::engine::StateManager;
 
 /// Arguments for the `inspect` command
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct InspectArgs {
     /// Container ID or name
     pub container: String,

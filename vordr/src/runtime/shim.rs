@@ -263,9 +263,9 @@ pub struct ShimProcess {
 impl ShimProcess {
     /// Spawn a new shim process
     pub fn spawn(
-        runtime: &str,
+        _runtime: &str,
         container_id: &str,
-        bundle_path: &Path,
+        _bundle_path: &Path,
         root_dir: &Path,
     ) -> Result<Self, ShimError> {
         let socket_path = root_dir.join(format!("{}.sock", container_id));

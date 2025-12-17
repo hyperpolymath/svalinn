@@ -378,8 +378,10 @@ impl StateManager {
                      FROM containers WHERE state = ?1
                      ORDER BY created_at DESC",
                 )?;
-                stmt.query_map([state.as_str()], Self::row_to_container_info)?
-                    .collect::<Result<Vec<_>, _>>()?
+                let result = stmt
+                    .query_map([state.as_str()], Self::row_to_container_info)?
+                    .collect::<Result<Vec<_>, _>>()?;
+                result
             }
             None => {
                 let mut stmt = self.conn.prepare(
@@ -387,8 +389,10 @@ impl StateManager {
                             created_at, started_at, finished_at, config
                      FROM containers ORDER BY created_at DESC",
                 )?;
-                stmt.query_map([], Self::row_to_container_info)?
-                    .collect::<Result<Vec<_>, _>>()?
+                let result = stmt
+                    .query_map([], Self::row_to_container_info)?
+                    .collect::<Result<Vec<_>, _>>()?;
+                result
             }
         };
         Ok(containers)

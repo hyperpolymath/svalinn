@@ -124,18 +124,18 @@ pub enum Commands {
 
 /// Execute a CLI command
 pub async fn execute(cli: Cli) -> Result<()> {
-    match cli.command {
-        Commands::Run(args) => run::execute(args, &cli).await,
-        Commands::Exec(args) => exec::execute(args, &cli).await,
-        Commands::Ps(args) => ps::execute(args, &cli).await,
-        Commands::Inspect(args) => inspect::execute(args, &cli).await,
-        Commands::Start { container } => start_container(&container, &cli).await,
-        Commands::Stop { container, timeout } => stop_container(&container, timeout, &cli).await,
-        Commands::Rm { container, force } => remove_container(&container, force, &cli).await,
-        Commands::Image(cmd) => images::execute(cmd, &cli).await,
-        Commands::Network(cmd) => network::execute(cmd, &cli).await,
-        Commands::Volume(cmd) => volume::execute(cmd, &cli).await,
-        Commands::Pull { image } => pull_image(&image, &cli).await,
+    match &cli.command {
+        Commands::Run(args) => run::execute(args.clone(), &cli).await,
+        Commands::Exec(args) => exec::execute(args.clone(), &cli).await,
+        Commands::Ps(args) => ps::execute(args.clone(), &cli).await,
+        Commands::Inspect(args) => inspect::execute(args.clone(), &cli).await,
+        Commands::Start { container } => start_container(container, &cli).await,
+        Commands::Stop { container, timeout } => stop_container(container, *timeout, &cli).await,
+        Commands::Rm { container, force } => remove_container(container, *force, &cli).await,
+        Commands::Image(cmd) => images::execute(cmd.clone(), &cli).await,
+        Commands::Network(cmd) => network::execute(cmd.clone(), &cli).await,
+        Commands::Volume(cmd) => volume::execute(cmd.clone(), &cli).await,
+        Commands::Pull { image } => pull_image(image, &cli).await,
         Commands::Info => show_info(&cli).await,
         Commands::Version => show_version(),
     }

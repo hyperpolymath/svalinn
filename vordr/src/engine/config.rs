@@ -2,13 +2,15 @@
 //! OCI runtime configuration generation
 
 use oci_spec::runtime::{
-    LinuxBuilder, LinuxCapabilitiesBuilder, LinuxNamespace, LinuxNamespaceBuilder,
+    Capability, LinuxBuilder, LinuxCapabilitiesBuilder, LinuxNamespace, LinuxNamespaceBuilder,
     LinuxNamespaceType, MountBuilder, ProcessBuilder, RootBuilder, Spec, SpecBuilder, UserBuilder,
 };
+use std::collections::HashSet;
 use std::path::Path;
+use std::str::FromStr;
 use thiserror::Error;
 
-use crate::ffi::{NetworkMode, ValidatedConfig};
+use crate::ffi::ValidatedConfig;
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -222,44 +224,41 @@ impl OciConfigBuilder {
         // Build capabilities
         let default_caps = self.get_default_capabilities();
         let capabilities = LinuxCapabilitiesBuilder::default()
-            .bounding(default_caps.clone())
-            .effective(default_caps.clone())
-            .inheritable(default_caps.clone())
-            .permitted(default_caps.clone())
+            .bounding(default_caps.iter().cloned().collect::<HashSet<_>>())
+            .effective(default_caps.iter().cloned().collect::<HashSet<_>>())
+            .inheritable(default_caps.iter().cloned().collect::<HashSet<_>>())
+            .permitted(default_caps.iter().cloned().collect::<HashSet<_>>())
             .ambient(default_caps)
             .build()
             .map_err(|e| ConfigError::OciSpec(e.to_string()))?;
 
         // Build process
-        let mut process_builder = ProcessBuilder::default();
-        process_builder
+        let process = ProcessBuilder::default()
             .terminal(self.terminal)
             .user(user)
-            .args(self.command)
-            .env(self.env)
+            .args(self.command.clone())
+            .env(self.env.clone())
             .cwd(self.cwd.clone())
             .capabilities(capabilities)
-            .no_new_privileges(self.no_new_privileges);
-
-        let process = process_builder
+            .no_new_privileges(self.no_new_privileges)
             .build()
             .map_err(|e| ConfigError::OciSpec(e.to_string()))?;
 
         // Build root
         let root = RootBuilder::default()
-            .path(self.rootfs_path)
+            .path(self.rootfs_path.clone())
             .readonly(self.readonly_rootfs)
             .build()
             .map_err(|e| ConfigError::OciSpec(e.to_string()))?;
 
         // Build mounts
         let mut mounts = self.get_default_mounts();
-        for mount in self.mounts {
+        for mount in &self.mounts {
             let m = MountBuilder::default()
-                .source(mount.source)
-                .destination(mount.destination)
-                .typ(mount.mount_type)
-                .options(mount.options)
+                .source(mount.source.clone())
+                .destination(mount.destination.clone())
+                .typ(mount.mount_type.clone())
+                .options(mount.options.clone())
                 .build()
                 .map_err(|e| ConfigError::OciSpec(e.to_string()))?;
             mounts.push(m);
@@ -284,17 +283,18 @@ impl OciConfigBuilder {
             .map_err(|e| ConfigError::OciSpec(e.to_string()))?;
 
         // Build final spec
-        let mut spec_builder = SpecBuilder::default();
-        spec_builder
+        let spec_builder = SpecBuilder::default()
             .version("1.0.2")
             .root(root)
             .process(process)
             .mounts(mounts)
             .linux(linux);
 
-        if let Some(hostname) = self.hostname {
-            spec_builder.hostname(hostname);
-        }
+        let spec_builder = if let Some(ref hostname) = self.hostname {
+            spec_builder.hostname(hostname.clone())
+        } else {
+            spec_builder
+        };
 
         spec_builder
             .build()
@@ -310,10 +310,15 @@ impl OciConfigBuilder {
         Ok(())
     }
 
-    fn get_default_capabilities(&self) -> Vec<String> {
+    fn get_default_capabilities(&self) -> HashSet<Capability> {
+        /// Helper to parse a capability string to Capability enum
+        fn parse_cap(s: &str) -> Option<Capability> {
+            Capability::from_str(s).ok()
+        }
+
         if self.privileged {
             // All capabilities in privileged mode
-            return vec![
+            return [
                 "CAP_AUDIT_CONTROL",
                 "CAP_AUDIT_READ",
                 "CAP_AUDIT_WRITE",
@@ -354,12 +359,12 @@ impl OciConfigBuilder {
                 "CAP_WAKE_ALARM",
             ]
             .into_iter()
-            .map(String::from)
+            .filter_map(parse_cap)
             .collect();
         }
 
         // Default unprivileged capabilities (OCI defaults)
-        let mut caps: Vec<String> = vec![
+        let mut caps: HashSet<Capability> = [
             "CAP_CHOWN",
             "CAP_DAC_OVERRIDE",
             "CAP_FSETID",
@@ -376,7 +381,7 @@ impl OciConfigBuilder {
             "CAP_AUDIT_WRITE",
         ]
         .into_iter()
-        .map(String::from)
+        .filter_map(parse_cap)
         .collect();
 
         // Add requested capabilities
@@ -386,8 +391,8 @@ impl OciConfigBuilder {
             } else {
                 format!("CAP_{}", cap.to_uppercase())
             };
-            if !caps.contains(&cap_name) {
-                caps.push(cap_name);
+            if let Some(capability) = parse_cap(&cap_name) {
+                caps.insert(capability);
             }
         }
 
@@ -398,7 +403,9 @@ impl OciConfigBuilder {
             } else {
                 format!("CAP_{}", cap.to_uppercase())
             };
-            caps.retain(|c| c != &cap_name);
+            if let Some(capability) = parse_cap(&cap_name) {
+                caps.remove(&capability);
+            }
         }
 
         caps

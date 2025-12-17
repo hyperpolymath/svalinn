@@ -11,7 +11,7 @@ use crate::engine::{ContainerState, StateManager};
 use crate::ffi::{ConfigValidator, NetworkMode};
 
 /// Arguments for the `run` command
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct RunArgs {
     /// Image to run
     pub image: String,

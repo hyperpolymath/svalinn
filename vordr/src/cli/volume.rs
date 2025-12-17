@@ -6,9 +6,9 @@ use clap::Subcommand;
 use std::path::Path;
 
 use crate::cli::Cli;
-use crate::engine::StateManager;
+use crate::engine::{check_not_symlink, path_to_string, validate_resource_name, StateManager};
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum VolumeCommands {
     /// Create a volume
     Create {
@@ -89,6 +89,9 @@ async fn create_volume(
     options: &[String],
     cli: &Cli,
 ) -> Result<()> {
+    // SECURITY: Validate volume name to prevent path traversal
+    validate_resource_name(name).context("Invalid volume name")?;
+
     let db_path = Path::new(&cli.db_path);
     if let Some(parent) = db_path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -98,12 +101,29 @@ async fn create_volume(
 
     let volume_id = uuid::Uuid::new_v4().to_string();
 
-    // Create mountpoint
+    // Create mountpoint with security checks
     let root_path = Path::new(&cli.root);
-    let mountpoint = root_path.join("volumes").join(name);
+    let volumes_dir = root_path.join("volumes");
+    std::fs::create_dir_all(&volumes_dir).context("Failed to create volumes directory")?;
+
+    let mountpoint = volumes_dir.join(name);
+
+    // SECURITY: Verify mountpoint is within expected directory
+    let volumes_canonical = volumes_dir
+        .canonicalize()
+        .context("Failed to canonicalize volumes directory")?;
+
     std::fs::create_dir_all(&mountpoint).context("Failed to create volume mountpoint")?;
 
-    // Parse labels and options to JSON
+    let mountpoint_canonical = mountpoint
+        .canonicalize()
+        .context("Failed to canonicalize mountpoint")?;
+
+    if !mountpoint_canonical.starts_with(&volumes_canonical) {
+        anyhow::bail!("Security error: mountpoint escapes volumes directory");
+    }
+
+    // Parse labels and options to JSON with proper error handling
     let labels_json = if labels.is_empty() {
         None
     } else {
@@ -118,7 +138,7 @@ async fn create_volume(
                 }
             })
             .collect();
-        Some(serde_json::to_string(&map).unwrap())
+        Some(serde_json::to_string(&map).context("Failed to serialize labels")?)
     };
 
     let options_json = if options.is_empty() {
@@ -135,14 +155,17 @@ async fn create_volume(
                 }
             })
             .collect();
-        Some(serde_json::to_string(&map).unwrap())
+        Some(serde_json::to_string(&map).context("Failed to serialize options")?)
     };
+
+    let mountpoint_str = path_to_string(&mountpoint_canonical)
+        .context("Mountpoint path contains invalid UTF-8")?;
 
     state.create_volume(
         &volume_id,
         name,
         driver,
-        mountpoint.to_str().unwrap(),
+        &mountpoint_str,
         options_json.as_deref(),
         labels_json.as_deref(),
     )?;
@@ -187,9 +210,24 @@ async fn remove_volume(volume_name: &str, cli: &Cli) -> Result<()> {
 
     let volume = state.get_volume(volume_name)?;
 
-    // Remove mountpoint
+    // Remove mountpoint with security checks
     let mountpoint = Path::new(&volume.mountpoint);
     if mountpoint.exists() {
+        // SECURITY: Check for symlink before removal to prevent TOCTOU attacks
+        check_not_symlink(mountpoint).context("Security error during volume removal")?;
+
+        // Verify path is within expected volumes directory
+        let root_path = Path::new(&cli.root);
+        let volumes_dir = root_path.join("volumes");
+        if volumes_dir.exists() {
+            let volumes_canonical = volumes_dir.canonicalize()?;
+            let mountpoint_canonical = mountpoint.canonicalize()?;
+
+            if !mountpoint_canonical.starts_with(&volumes_canonical) {
+                anyhow::bail!("Security error: volume mountpoint is outside volumes directory");
+            }
+        }
+
         std::fs::remove_dir_all(mountpoint).context("Failed to remove volume mountpoint")?;
     }
 
