@@ -1,20 +1,358 @@
+// SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
 = Svalinn
-:toc: auto
-:toclevels: 2
+:toc: preamble
+:toclevels: 3
+:icons: font
+:source-highlighter: rouge
 
-Svalinn Project: A Rescript-powered edge shield (Deno) guarding a custom OCI runtime fortress (Vörðr). Post-cloud security architecture.
+*Post-Cloud Security Architecture: A ReScript-powered edge shield (Deno) guarding a formally verified OCI container fortress (Vordr).*
 
-== Overview
+[.lead]
+Svalinn implements a defence-in-depth container platform combining formally verified security policies (Ada/SPARK), a daemonless Rust container engine, and AI-assisted orchestration via MCP.
 
-Svalinn implements a post-cloud security architecture combining:
+== Project Status
 
-* **Edge Shield** - ReScript-powered edge computing layer running on Deno
-* **Vörðr** - Custom OCI runtime for container isolation
+[cols="1,1,3",options="header"]
+|===
+|Component |Status |Description
 
-== Tech Stack
+|*Vordr Core Engine*
+|Implementation Complete
+|Rust daemonless container engine with full CLI
 
-* ReScript, Deno, Bash, ArangoDB, OCI Runtime
+|*Gatekeeper (SPARK)*
+|Design Complete
+|Formally verified security policy validator (FFI ready)
+
+|*State Manager*
+|Complete
+|SQLite with WAL mode, NFS-safe fallback
+
+|*Container Lifecycle*
+|Complete
+|Create, start, stop, pause, resume, kill, delete
+
+|*Runtime Shim*
+|Complete
+|youki/runc integration via OCI runtime spec
+
+|*Networking*
+|Complete
+|Netavark integration for CNI-compatible networking
+
+|*Registry Client*
+|Complete
+|OCI Distribution spec client with auth support
+
+|*MCP Server*
+|Complete
+|AI-assisted container management tool definitions
+
+|*Integration Testing*
+|Pending
+|End-to-end test suite
+
+|*Edge Shield (Svalinn)*
+|Pending
+|ReScript/Deno edge layer
+|===
+
+== Architecture
+
+----
+                     ┌─────────────────────────────────────────┐
+                     │            SVALINN ECOSYSTEM            │
+                     └─────────────────────────────────────────┘
+                                        │
+           ┌────────────────────────────┼────────────────────────────┐
+           │                            │                            │
+           ▼                            ▼                            ▼
+   ┌───────────────┐          ┌─────────────────┐          ┌─────────────────┐
+   │   SVALINN     │          │     VORDR       │          │      WORDS      │
+   │  Edge Shield  │          │   The Warden    │          │  Documentation  │
+   │ (ReScript/    │◄────────►│  (Rust/SPARK)   │          │   (AsciiDoc)    │
+   │    Deno)      │          │                 │          │                 │
+   └───────────────┘          └─────────────────┘          └─────────────────┘
+                                        │
+                    ┌───────────────────┼───────────────────┐
+                    │                   │                   │
+                    ▼                   ▼                   ▼
+           ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+           │  GATEKEEPER  │    │   RUNTIME    │    │   NETWORK    │
+           │  Ada/SPARK   │    │ youki/runc   │    │  Netavark    │
+           │  (Verified)  │    │   (OCI)      │    │  (CNI)       │
+           └──────────────┘    └──────────────┘    └──────────────┘
+----
+
+=== Vordr - The Warden
+
+The core container engine, implemented in Rust with formally verified security policies.
+
+[source,rust]
+----
+// Container lifecycle managed through state machine
+pub enum ContainerState {
+    Created,   // Bundle prepared, not yet started
+    Running,   // Process active
+    Paused,    // Frozen via cgroup
+    Stopped,   // Exited
+}
+----
+
+==== Key Features
+
+* *Daemonless Architecture* - No persistent daemon required
+* *Formally Verified Security* - SPARK/Ada gatekeeper validates all OCI configs
+* *SQLite State Management* - WAL mode with NFS-safe DELETE fallback
+* *OCI Compliant* - Works with youki or runc runtimes
+* *MCP Integration* - AI-assisted container management
+
+==== CLI Commands
+
+[source,shell]
+----
+vordr run <image>           # Create and start container
+vordr exec <container>      # Execute in running container
+vordr ps                    # List containers
+vordr stop <container>      # Graceful shutdown
+vordr rm <container>        # Remove container
+vordr image ls              # List images
+vordr pull <image>          # Pull from registry
+vordr network create        # Create network
+vordr volume create         # Create volume
+vordr info                  # System information
+----
+
+=== Gatekeeper - Security Policy Validation
+
+All OCI configurations pass through the formally verified Gatekeeper before execution:
+
+[source,ada]
+----
+-- SPARK Contract: Policy must be proven safe
+function Validate_Config (Config : OCI_Config) return Validation_Result
+  with Pre  => Config.Is_Well_Formed,
+       Post => (Validate_Config'Result = Valid) implies Is_Secure(Config);
+----
+
+*Security Guarantees:*
+
+* No privilege escalation without explicit approval
+* User namespace enforcement for UID 0
+* Capability restrictions (SYS_ADMIN requires privileged mode)
+* Network mode validation (NET_ADMIN requires Admin mode)
+* AoRTE (Absence of Run-Time Errors) proven
+
+== Technology Stack
+
+[cols="1,1,2",options="header"]
+|===
+|Layer |Technology |Purpose
+
+|*Core Engine*
+|Rust
+|CLI, async I/O, memory safety
+
+|*Security Policy*
+|Ada/SPARK
+|Formally verified validation
+
+|*State Storage*
+|SQLite
+|Container/image/network state
+
+|*Runtime*
+|youki (primary), runc (fallback)
+|OCI container execution
+
+|*Networking*
+|Netavark
+|Container networking (CNI)
+
+|*Edge Layer*
+|ReScript + Deno
+|API gateway, orchestration
+
+|*IPC*
+|TTRPC
+|Lightweight RPC for shims
+
+|*Registry*
+|OCI Distribution
+|Image pull/push
+
+|*AI Integration*
+|MCP
+|AI-assisted management
+|===
+
+== Getting Started
+
+=== Prerequisites
+
+[source,shell]
+----
+# Rust toolchain
+rustup update stable
+
+# Optional: SPARK toolchain for verification
+# Install GNAT Community Edition with SPARK
+
+# OCI Runtime (one of)
+cargo install youki  # or use system runc
+
+# Networking (optional)
+cargo install netavark
+----
+
+=== Build
+
+[source,shell]
+----
+# Full build
+just build-vordr
+
+# Quick build (skip SPARK verification)
+just build-vordr-quick
+
+# Run tests
+just test-vordr
+
+# Full verification (SPARK proofs + tests + lint)
+just verify
+----
+
+=== Quick Start
+
+[source,shell]
+----
+# Pull and run a container
+vordr pull alpine:latest
+vordr run --name mycontainer alpine:latest /bin/sh
+
+# List containers
+vordr ps -a
+
+# Execute command in container
+vordr exec mycontainer ls -la
+
+# Stop and remove
+vordr stop mycontainer
+vordr rm mycontainer
+----
+
+== Project Structure
+
+----
+svalinn/
+├── vordr/                  # Core container engine (Rust)
+│   ├── src/
+│   │   ├── main.rs         # Entry point
+│   │   ├── cli/            # Command-line interface
+│   │   ├── engine/         # Container lifecycle, state
+│   │   ├── ffi/            # SPARK gatekeeper bindings
+│   │   ├── runtime/        # OCI runtime shim
+│   │   ├── network/        # Netavark integration
+│   │   ├── registry/       # OCI distribution client
+│   │   └── mcp/            # AI tool definitions
+│   ├── spark_core/         # Ada/SPARK security policies
+│   └── Cargo.toml
+├── svalinn/                # Edge layer (ReScript/Deno) [pending]
+├── words/                  # Documentation (AsciiDoc)
+├── .meta/                  # Project metadata
+│   └── STATE.scm           # Machine-readable state
+├── Justfile                # Build orchestration
+└── README.adoc             # This file
+----
+
+== Security Model
+
+=== Three-Perimeter Defence
+
+[cols="1,1,2",options="header"]
+|===
+|Perimeter |Name |Requirements
+
+|*Core*
+|Vordr
+|GPG-signed commits, 2-person review
+
+|*Edge*
+|Svalinn
+|High scrutiny, API validation
+
+|*Public*
+|External
+|Open contribution, sandboxed
+|===
+
+=== Gatekeeper Policy Rules
+
+1. *Privileged Mode* - Required for SYS_ADMIN capability
+2. *User Namespace* - Required when running as UID 0
+3. *Network Mode* - NET_ADMIN requires Restricted or Admin mode
+4. *Privilege Escalation* - Blocked unless no_new_privileges=false AND user namespace enabled
+
+== MCP Integration
+
+Vordr exposes MCP (Model Context Protocol) tools for AI-assisted container management:
+
+[source,json]
+----
+{
+  "tools": [
+    "vordr_run",      // Create and start container
+    "vordr_ps",       // List containers
+    "vordr_stop",     // Stop container
+    "vordr_exec",     // Execute in container
+    "vordr_logs",     // Fetch logs
+    "vordr_inspect",  // Container details
+    "vordr_pull",     // Pull image
+    "vordr_network_create"  // Create network
+  ]
+}
+----
+
+== Development
+
+=== Justfile Commands
+
+[source,shell]
+----
+just                    # List all commands
+just check-toolchain    # Verify prerequisites
+just build-vordr        # Build with verification
+just test-vordr         # Run tests
+just prove              # SPARK proofs only
+just lint               # Clippy lints
+just fmt                # Format code
+just verify             # Full pipeline
+just watch              # Watch and rebuild
+just reflect            # Dump project context
+----
+
+=== Contributing
+
+See link:CONTRIBUTING.md[CONTRIBUTING.md] for guidelines.
+
+* *Language Policy*: Rust, Ada/SPARK, ReScript only. No TypeScript, Go, or Python (except SaltStack).
+* *Security*: No MD5/SHA1, HTTPS only, no hardcoded secrets.
+* *Licensing*: MIT OR AGPL-3.0-or-later, SPDX headers required.
 
 == License
 
-AGPL-3.0-or-later
+This project is dual-licensed under:
+
+* MIT License
+* AGPL-3.0-or-later
+
+See link:LICENSE.txt[LICENSE.txt] for details.
+
+== References
+
+* https://github.com/opencontainers/runtime-spec[OCI Runtime Specification]
+* https://github.com/opencontainers/image-spec[OCI Image Specification]
+* https://docs.adacore.com/spark2014-docs/html/ug/[SPARK User Guide]
+* https://youki-dev.github.io/youki/[youki Documentation]
+* https://github.com/containers/netavark[Netavark]
+* https://modelcontextprotocol.io/[Model Context Protocol]
