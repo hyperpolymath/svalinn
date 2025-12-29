@@ -31,6 +31,26 @@ This document outlines the implementation plan for five critical user experience
 |*5. Config + Defaults*
 |XDG-compliant configuration with sane defaults
 |P1 (High)
+
+|*6. Compose Subset*
+|`compose up/down` with explicit subset support
+|P2 (Should)
+
+|*7. Credential Ergonomics*
+|`login/logout`, secret-service integration
+|P2 (Should)
+
+|*8. System Commands*
+|`system df/prune` with dry-run mode
+|P2 (Should)
+
+|*9. Shell Completions*
+|bash/zsh/fish completions + manpages
+|P2 (Should)
+
+|*10. Docker Interop*
+|Compatibility aliases, import/export
+|P2 (Should)
 |===
 
 == Feature 1: Doctor + Fix-Forward Onboarding
@@ -1123,6 +1143,757 @@ Reset complete. Run 'vordr doctor' to verify.
 * `vordr/src/cli/mod.rs` - Add Config and System commands
 * `config/vordr.example.toml` (new) - Example config file
 
+== Feature 6: Compose Subset
+
+=== Overview
+
+Provide a supported subset of Docker Compose functionality with explicit incompatibility reporting.
+
+=== Scope: Supported Subset
+
+Rather than full compose compatibility, Vordr supports a well-defined subset:
+
+==== Supported Keys
+
+[cols="1,2",options="header"]
+|===
+|Key |Notes
+
+|`version`
+|Ignored (always v3+ semantics)
+
+|`services`
+|Container definitions
+
+|`services.<name>.image`
+|Required
+
+|`services.<name>.command`
+|Override entrypoint
+
+|`services.<name>.ports`
+|Port mappings (`HOST:CONTAINER`)
+
+|`services.<name>.volumes`
+|Volume mounts
+
+|`services.<name>.environment`
+|Environment variables
+
+|`services.<name>.env_file`
+|Load from file
+
+|`services.<name>.depends_on`
+|Simple ordering (not health-based)
+
+|`services.<name>.networks`
+|Network attachment
+
+|`services.<name>.restart`
+|`no`, `always`, `on-failure`
+
+|`networks`
+|Network definitions
+
+|`volumes`
+|Named volume definitions
+|===
+
+==== Explicitly Unsupported
+
+[cols="1,2",options="header"]
+|===
+|Key |Alternative
+
+|`build`
+|Use `vordr build` or external tool
+
+|`deploy`
+|Orchestration layer (Svalinn)
+
+|`configs`
+|Use volume mounts
+
+|`secrets`
+|Use environment or files
+
+|`healthcheck`
+|Phase 2 feature
+
+|`profiles`
+|Future consideration
+|===
+
+=== Commands
+
+==== `vordr compose up`
+
+[source,text]
+----
+$ vordr compose up
+Using: ./compose.yaml
+
+Creating network vordr_default...
+Creating volume vordr_data...
+Creating container web (nginx:alpine)... done
+Creating container api (app:latest)... done
+Creating container db (postgres:15)... done
+
+Services started: 3
+----
+
+==== `vordr compose down`
+
+[source,text]
+----
+$ vordr compose down
+Stopping container db... done
+Stopping container api... done
+Stopping container web... done
+Removing containers... done
+
+Remove networks? [y/N] y
+Removing network vordr_default... done
+
+Remove volumes? [y/N] n
+Volumes retained.
+----
+
+==== `vordr compose ps`
+
+[source,text]
+----
+$ vordr compose ps
+NAME    IMAGE           STATUS      PORTS
+web     nginx:alpine    running     0.0.0.0:80->80/tcp
+api     app:latest      running     0.0.0.0:3000->3000/tcp
+db      postgres:15     running     5432/tcp
+----
+
+==== Incompatibility Reporting
+
+[source,text]
+----
+$ vordr compose up
+Using: ./compose.yaml
+
+WARNING: Unsupported compose keys detected:
+  services.api.build     → Use 'vordr build' first, then reference image
+  services.api.deploy    → Deploy config ignored (use Svalinn for orchestration)
+  services.db.healthcheck → Health checks not yet supported (coming in v0.3)
+
+Continue with supported keys? [Y/n] y
+...
+----
+
+=== Implementation
+
+[source,rust]
+----
+// vordr/src/cli/compose.rs
+
+#[derive(Parser, Debug)]
+pub struct ComposeArgs {
+    /// Path to compose file
+    #[arg(short, long, default_value = "compose.yaml")]
+    pub file: PathBuf,
+
+    /// Project name (default: directory name)
+    #[arg(short, long)]
+    pub project_name: Option<String>,
+
+    #[command(subcommand)]
+    pub command: ComposeCommands,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ComposeCommands {
+    /// Start services
+    Up {
+        /// Run in background
+        #[arg(short, long)]
+        detach: bool,
+
+        /// Don't start dependencies
+        #[arg(long)]
+        no_deps: bool,
+    },
+
+    /// Stop services
+    Down {
+        /// Remove volumes
+        #[arg(short, long)]
+        volumes: bool,
+
+        /// Remove images (local|all)
+        #[arg(long)]
+        rmi: Option<String>,
+    },
+
+    /// List containers
+    Ps {
+        /// Show all (including stopped)
+        #[arg(short, long)]
+        all: bool,
+    },
+
+    /// View logs
+    Logs {
+        /// Service name
+        service: Option<String>,
+
+        /// Follow log output
+        #[arg(short, long)]
+        follow: bool,
+    },
+
+    /// Validate compose file
+    Config {
+        /// Only check for errors
+        #[arg(long)]
+        quiet: bool,
+    },
+}
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/compose.rs` (new) - Compose commands
+* `vordr/src/compose/mod.rs` (new) - Compose parsing
+* `vordr/src/compose/parser.rs` (new) - YAML parser
+* `vordr/src/compose/validator.rs` (new) - Key validation
+
+== Feature 7: Credential Ergonomics
+
+=== Overview
+
+User-friendly registry authentication with secure credential storage.
+
+=== Commands
+
+==== `vordr login`
+
+[source,text]
+----
+$ vordr login docker.io
+Username: myuser
+Password: ********
+
+Login succeeded.
+Credentials stored in: secret-service (freedesktop.org)
+----
+
+==== `vordr login` (stdin)
+
+[source,bash]
+----
+$ echo "$TOKEN" | vordr login --username myuser --password-stdin ghcr.io
+Login succeeded.
+----
+
+==== `vordr logout`
+
+[source,text]
+----
+$ vordr logout docker.io
+Removed credentials for docker.io
+----
+
+==== `vordr auth ls`
+
+[source,text]
+----
+$ vordr auth ls
+REGISTRY          METHOD           EXPIRES
+docker.io         secret-service   never
+ghcr.io           file             2025-02-15
+quay.io           token            2025-01-20
+----
+
+=== Credential Storage Backends
+
+[cols="1,1,2",options="header"]
+|===
+|Backend |Platform |Notes
+
+|`secret-service`
+|Linux (GNOME/KDE)
+|D-Bus Secret Service API (recommended)
+
+|`file`
+|All
+|`~/.config/vordr/auth.json` (encrypted)
+
+|`keychain`
+|macOS
+|Keychain Access (future)
+
+|`wincred`
+|Windows
+|Windows Credential Manager (future)
+
+|`pass`
+|Linux
+|pass(1) password manager
+|===
+
+=== Implementation
+
+[source,rust]
+----
+// vordr/src/cli/auth.rs
+
+#[derive(Parser, Debug)]
+pub struct LoginArgs {
+    /// Registry URL (default: docker.io)
+    #[arg(default_value = "docker.io")]
+    pub registry: String,
+
+    /// Username
+    #[arg(short, long)]
+    pub username: Option<String>,
+
+    /// Read password from stdin
+    #[arg(long)]
+    pub password_stdin: bool,
+
+    /// Credential store (secret-service, file, pass)
+    #[arg(long, default_value = "auto")]
+    pub credential_store: String,
+}
+
+#[derive(Parser, Debug)]
+pub struct LogoutArgs {
+    /// Registry URL
+    pub registry: String,
+
+    /// Remove all credentials
+    #[arg(long)]
+    pub all: bool,
+}
+----
+
+=== Error Messages
+
+[source,text]
+----
+Error: Authentication failed for ghcr.io
+
+Registry: ghcr.io
+Method:   Bearer token (from secret-service)
+Response: 401 Unauthorized - Bad credentials
+
+Possible causes:
+  - Token expired (check: vordr auth ls)
+  - Insufficient scopes (need: read:packages)
+  - Wrong account
+
+To fix:
+  vordr logout ghcr.io
+  vordr login ghcr.io
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/auth.rs` (new) - Login/logout commands
+* `vordr/src/auth/mod.rs` (new) - Auth module
+* `vordr/src/auth/store.rs` (new) - Credential storage
+* `vordr/src/auth/secret_service.rs` (new) - D-Bus integration
+
+== Feature 8: System Commands
+
+=== Overview
+
+Disk space management and cleanup commands with safety guardrails.
+
+=== Commands
+
+==== `vordr system df`
+
+[source,text]
+----
+$ vordr system df
+TYPE            TOTAL     ACTIVE    SIZE        RECLAIMABLE
+Images          15        4         2.3 GB      1.8 GB (78%)
+Containers      8         2         156 MB      98 MB (63%)
+Volumes         5         3         892 MB      245 MB (27%)
+Build Cache     -         -         0 B         0 B
+
+Total: 3.3 GB, Reclaimable: 2.1 GB (64%)
+----
+
+==== `vordr system df` (verbose)
+
+[source,text]
+----
+$ vordr system df -v
+Images:
+REPOSITORY          TAG       SIZE        CREATED         IN USE
+alpine              3.18      7.8 MB      2 weeks ago     Yes
+nginx               1.25      187 MB      3 days ago      Yes
+redis               7         138 MB      1 week ago      No
+postgres            15        412 MB      2 weeks ago     No
+<none>              <none>    892 MB      5 days ago      No
+
+Containers:
+CONTAINER ID    IMAGE           SIZE        CREATED         STATUS
+a1b2c3d4        alpine:3.18     12 KB       2 hours ago     running
+e5f6g7h8        nginx:1.25      45 MB       1 day ago       exited
+...
+----
+
+==== `vordr system prune`
+
+[source,text]
+----
+$ vordr system prune
+This will remove:
+  - All stopped containers
+  - All unused networks
+  - All dangling images
+  - All unused build cache
+
+Space to reclaim: ~1.8 GB
+
+Continue? [y/N] y
+Deleted 4 containers
+Deleted 2 networks
+Deleted 8 images
+Reclaimed: 1.76 GB
+----
+
+==== `vordr system prune` (dry-run)
+
+[source,text]
+----
+$ vordr system prune --dry-run
+DRY RUN - No changes will be made
+
+Would remove:
+  Containers:
+    - e5f6g7h8 (nginx:1.25, exited 2 days ago)
+    - i9j0k1l2 (redis:7, exited 1 week ago)
+  Networks:
+    - old-bridge (unused)
+  Images:
+    - postgres:15 (unused)
+    - <none>:<none> (dangling, 892 MB)
+
+Estimated space: 1.76 GB
+----
+
+==== `vordr system prune --all`
+
+[source,text]
+----
+$ vordr system prune --all
+WARNING: This will remove ALL unused data:
+  - All stopped containers
+  - All unused networks
+  - ALL unused images (not just dangling)
+  - All unused volumes
+  - All build cache
+
+Space to reclaim: ~2.1 GB
+
+Continue? [y/N] y
+...
+----
+
+=== Implementation
+
+[source,rust]
+----
+// vordr/src/cli/system.rs
+
+#[derive(Parser, Debug)]
+pub struct SystemArgs {
+    #[command(subcommand)]
+    pub command: SystemCommands,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum SystemCommands {
+    /// Show disk usage
+    Df {
+        /// Show detailed info
+        #[arg(short, long)]
+        verbose: bool,
+
+        /// Output format
+        #[arg(long, default_value = "table")]
+        format: OutputFormat,
+    },
+
+    /// Remove unused data
+    Prune {
+        /// Remove all unused images (not just dangling)
+        #[arg(short, long)]
+        all: bool,
+
+        /// Also prune volumes
+        #[arg(long)]
+        volumes: bool,
+
+        /// Don't prompt for confirmation
+        #[arg(short, long)]
+        force: bool,
+
+        /// Show what would be deleted
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Filter (e.g., until=24h, label=unused)
+        #[arg(long)]
+        filter: Vec<String>,
+    },
+
+    /// Display system info
+    Info,
+
+    /// Reset all Vordr data
+    Reset {
+        /// Don't prompt for confirmation
+        #[arg(short, long)]
+        force: bool,
+    },
+}
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/system.rs` (new) - System commands
+
+== Feature 9: Shell Completions + Manpages
+
+=== Overview
+
+First-class shell completion support and comprehensive help.
+
+=== Shell Completions
+
+==== Generation Command
+
+[source,text]
+----
+$ vordr completion bash > /etc/bash_completion.d/vordr
+$ vordr completion zsh > ~/.zfunc/_vordr
+$ vordr completion fish > ~/.config/fish/completions/vordr.fish
+----
+
+==== Implementation (clap derive)
+
+[source,rust]
+----
+// vordr/src/cli/completion.rs
+
+use clap::CommandFactory;
+use clap_complete::{Shell, generate};
+
+#[derive(Parser, Debug)]
+pub struct CompletionArgs {
+    /// Shell to generate completions for
+    #[arg(value_enum)]
+    pub shell: Shell,
+}
+
+pub fn execute(args: CompletionArgs) -> Result<()> {
+    let mut cmd = crate::cli::Cli::command();
+    let name = cmd.get_name().to_string();
+    generate(args.shell, &mut cmd, name, &mut std::io::stdout());
+    Ok(())
+}
+----
+
+=== Enhanced Help
+
+==== `vordr help <command>`
+
+[source,text]
+----
+$ vordr help run
+vordr run - Run a container from an image
+
+USAGE:
+    vordr run [OPTIONS] IMAGE [COMMAND] [ARGS]...
+
+EXAMPLES:
+    # Run an interactive shell
+    vordr run -it alpine /bin/sh
+
+    # Run detached with port mapping
+    vordr run -d -p 8080:80 --name web nginx
+
+    # Run with volume mount
+    vordr run -v /host/path:/container/path alpine cat /container/path/file
+
+    # Run with environment variables
+    vordr run -e DB_HOST=localhost -e DB_PORT=5432 myapp
+
+    # Run and remove on exit
+    vordr run --rm alpine echo "hello"
+
+OPTIONS:
+    -d, --detach              Run in background
+    -i, --interactive         Keep STDIN open
+    -t, --tty                 Allocate pseudo-TTY
+    --rm                      Remove container on exit
+    --name NAME               Container name
+    -p, --publish HOST:CONT   Publish port
+    -v, --volume HOST:CONT    Mount volume
+    -e, --env KEY=VALUE       Set environment variable
+    -w, --workdir DIR         Working directory
+    --entrypoint CMD          Override entrypoint
+    --network NET             Connect to network
+    --user USER               Username or UID
+    --privileged              Extended privileges
+    --restart POLICY          Restart policy
+
+SEE ALSO:
+    vordr exec      Execute command in container
+    vordr ps        List containers
+    vordr stop      Stop container
+    vordr logs      View container logs
+----
+
+=== Manpage Generation
+
+[source,rust]
+----
+// Build script or separate command
+use clap_mangen::Man;
+
+fn generate_manpages() {
+    let cmd = Cli::command();
+    let man = Man::new(cmd);
+    let mut buffer = Vec::new();
+    man.render(&mut buffer)?;
+    std::fs::write("vordr.1", buffer)?;
+}
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/completion.rs` (new) - Completion generation
+* `vordr/build.rs` - Add manpage generation
+* `Cargo.toml` - Add clap_complete, clap_mangen
+
+== Feature 10: Docker Interop
+
+=== Overview
+
+Meet users where they are with optional compatibility features.
+
+=== Docker-ish Aliases
+
+==== Alias Binary (`vordr-docker`)
+
+[source,bash]
+----
+# /usr/local/bin/vordr-docker (symlink or wrapper)
+#!/bin/sh
+exec vordr "$@"
+----
+
+==== Command Aliases
+
+[source,text]
+----
+$ vordr alias enable docker
+Enabled Docker-compatible aliases:
+  docker → vordr
+  docker-compose → vordr compose
+
+To use, add to your shell:
+  eval "$(vordr alias shell-init)"
+----
+
+==== Alias Mapping
+
+[cols="1,1,1",options="header"]
+|===
+|Docker Command |Vordr Command |Notes
+
+|`docker run`
+|`vordr run`
+|Full compatibility
+
+|`docker ps`
+|`vordr ps`
+|Same flags
+
+|`docker exec`
+|`vordr exec`
+|Same flags
+
+|`docker build`
+|`vordr build`
+|Requires buildkit/buildah
+
+|`docker-compose`
+|`vordr compose`
+|Subset only
+
+|`docker system prune`
+|`vordr system prune`
+|Same behavior
+
+|`docker login`
+|`vordr login`
+|Same behavior
+|===
+
+=== Import/Export
+
+==== `vordr save` (Export)
+
+[source,bash]
+----
+$ vordr save alpine:latest -o alpine.tar
+Exporting alpine:latest... done
+Wrote: alpine.tar (7.8 MB)
+
+$ vordr save alpine:latest | gzip > alpine.tar.gz
+----
+
+==== `vordr load` (Import)
+
+[source,bash]
+----
+$ vordr load -i alpine.tar
+Loading image from alpine.tar...
+Loaded: alpine:latest
+
+$ cat alpine.tar.gz | gunzip | vordr load
+Loaded: alpine:latest
+----
+
+=== Docker Config Import
+
+==== `vordr config import-docker`
+
+[source,text]
+----
+$ vordr config import-docker
+Found Docker config: ~/.docker/config.json
+
+Import registry credentials? [y/N] y
+  Importing: docker.io... done
+  Importing: ghcr.io... done
+
+Import insecure registries? [y/N] n
+
+Docker configuration imported.
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/save.rs` (new) - Save command
+* `vordr/src/cli/load.rs` (new) - Load command
+* `vordr/src/cli/alias.rs` (new) - Alias management
+* `vordr/src/compat/mod.rs` (new) - Docker compat module
+* `vordr/src/compat/docker_config.rs` (new) - Docker config import
+
 == Implementation Order
 
 === Phase 1: Foundation (v0.2.0)
@@ -1130,12 +1901,14 @@ Reset complete. Run 'vordr doctor' to verify.
 1. *Config system* - Implement XDG-compliant configuration
 2. *Error framework* - Implement helpful error messages
 3. *Output formatting* - Implement table + JSON output
+4. *Shell completions* - Add clap_complete integration
 
-=== Phase 2: Doctor (v0.2.0)
+=== Phase 2: Doctor + System (v0.2.0)
 
 1. *System detection* - Distro, kernel, capabilities
 2. *Doctor checks* - All check categories
 3. *Fix-forward* - Actionable guidance
+4. *System df/prune* - Disk management commands
 
 === Phase 3: Distribution (v0.2.0)
 
@@ -1149,11 +1922,20 @@ Reset complete. Run 'vordr doctor' to verify.
 2. *Happy path tests* - README flow validation
 3. *CI integration* - Run tests on clean runners
 
-=== Phase 5: Polish (v0.3.0)
+=== Phase 5: Auth + Compose (v0.3.0)
+
+1. *Login/logout* - Registry authentication
+2. *Credential storage* - secret-service, file, pass backends
+3. *Compose subset* - up/down/ps with supported keys
+4. *Incompatibility reporting* - Clear warnings for unsupported keys
+
+=== Phase 6: Polish + Interop (v0.3.0)
 
 1. *CLI flag consistency* - Audit and standardize
 2. *Exit codes* - Implement proper exit codes
-3. *Documentation* - Update README and add INSTALL.adoc
+3. *Docker aliases* - Optional compatibility layer
+4. *Save/load* - Image import/export
+5. *Documentation* - Update README and add INSTALL.adoc
 
 == Success Criteria
 
@@ -1190,6 +1972,39 @@ Reset complete. Run 'vordr doctor' to verify.
 * [ ] `config show/validate/edit` work
 * [ ] Environment variables override config file
 * [ ] Rootless mode works with user-level paths
+
+=== Compose (SHOULD)
+
+* [ ] `compose up/down` works with basic compose.yaml
+* [ ] Unsupported keys generate clear warnings
+* [ ] `compose config` validates files
+* [ ] depends_on ordering works
+
+=== Credentials (SHOULD)
+
+* [ ] `login/logout` work for docker.io
+* [ ] secret-service backend works on GNOME/KDE
+* [ ] File backend works as fallback
+* [ ] Auth errors show which registry/method
+
+=== System Commands (SHOULD)
+
+* [ ] `system df` shows disk usage
+* [ ] `system prune --dry-run` shows what would be removed
+* [ ] `system prune` prompts before deletion
+* [ ] Safe against removing active resources
+
+=== Shell Completions (SHOULD)
+
+* [ ] `completion bash/zsh/fish` generates valid scripts
+* [ ] Completions include subcommands and flags
+* [ ] Manpages generated during build
+
+=== Docker Interop (SHOULD)
+
+* [ ] `save/load` round-trip works
+* [ ] Docker config import works for registries
+* [ ] Aliases can be enabled/disabled
 
 == References
 

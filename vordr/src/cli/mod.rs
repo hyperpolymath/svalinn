@@ -3,13 +3,19 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 
+pub mod auth;
+pub mod completion;
+pub mod compose;
+pub mod doctor;
 pub mod exec;
 pub mod images;
 pub mod inspect;
 pub mod network;
 pub mod ps;
 pub mod run;
+pub mod system;
 pub mod volume;
 
 /// Vordr - High-Assurance Daemonless Container Engine
@@ -120,11 +126,40 @@ pub enum Commands {
 
     /// Show Vordr version
     Version,
+
+    // === New commands ===
+
+    /// Check system prerequisites and configuration
+    Doctor(doctor::DoctorArgs),
+
+    /// System management (df, prune, reset)
+    System(system::SystemArgs),
+
+    /// Multi-container applications with Compose
+    Compose(compose::ComposeArgs),
+
+    /// Log in to a container registry
+    Login(auth::LoginArgs),
+
+    /// Log out from a container registry
+    Logout(auth::LogoutArgs),
+
+    /// Manage registry authentication
+    Auth(auth::AuthArgs),
+
+    /// Generate shell completions
+    Completion {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: Shell,
+    },
 }
 
 /// Execute a CLI command
-pub async fn execute(cli: Cli) -> Result<()> {
-    match cli.command {
+pub async fn execute(mut cli: Cli) -> Result<()> {
+    // Take command out of cli to allow borrowing cli afterwards
+    let command = std::mem::replace(&mut cli.command, Commands::Version);
+    match command {
         Commands::Run(args) => run::execute(args, &cli).await,
         Commands::Exec(args) => exec::execute(args, &cli).await,
         Commands::Ps(args) => ps::execute(args, &cli).await,
@@ -138,6 +173,14 @@ pub async fn execute(cli: Cli) -> Result<()> {
         Commands::Pull { image } => pull_image(&image, &cli).await,
         Commands::Info => show_info(&cli).await,
         Commands::Version => show_version(),
+        // New commands
+        Commands::Doctor(args) => doctor::execute(args, &cli).await,
+        Commands::System(args) => system::execute(args, &cli).await,
+        Commands::Compose(args) => compose::execute(args, &cli).await,
+        Commands::Login(args) => auth::login(args, &cli).await,
+        Commands::Logout(args) => auth::logout(args, &cli).await,
+        Commands::Auth(args) => auth::execute_auth(args, &cli).await,
+        Commands::Completion { shell } => completion::execute(completion::CompletionArgs { shell }),
     }
 }
 
