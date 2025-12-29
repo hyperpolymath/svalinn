@@ -10,9 +10,11 @@ pub mod completion;
 pub mod compose;
 pub mod doctor;
 pub mod exec;
+pub mod explain;
 pub mod images;
 pub mod inspect;
 pub mod network;
+pub mod profile;
 pub mod ps;
 pub mod run;
 pub mod system;
@@ -153,6 +155,12 @@ pub enum Commands {
         #[arg(value_enum)]
         shell: Shell,
     },
+
+    /// Manage security profiles (strict/balanced/dev)
+    Profile(profile::ProfileArgs),
+
+    /// Explain why a policy blocked an action
+    Explain(explain::ExplainArgs),
 }
 
 /// Execute a CLI command
@@ -181,6 +189,8 @@ pub async fn execute(mut cli: Cli) -> Result<()> {
         Commands::Logout(args) => auth::logout(args, &cli).await,
         Commands::Auth(args) => auth::execute_auth(args, &cli).await,
         Commands::Completion { shell } => completion::execute(completion::CompletionArgs { shell }),
+        Commands::Profile(args) => profile::execute(args, &cli).await,
+        Commands::Explain(args) => explain::execute(args, &cli).await,
     }
 }
 

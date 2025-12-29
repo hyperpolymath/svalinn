@@ -51,6 +51,22 @@ This document outlines the implementation plan for five critical user experience
 |*10. Docker Interop*
 |Compatibility aliases, import/export
 |P2 (Should)
+
+|*11. Edge Shield UX*
+|Guided workflows, policy explanations
+|P3 (Could)
+
+|*12. TUI Dashboard*
+|lazydocker-like live container view
+|P3 (Could)
+
+|*13. Security Profiles*
+|strict/balanced/dev presets with diffing
+|P3 (Could)
+
+|*14. Cross-Platform Machine*
+|`vordr machine` for macOS/Windows
+|P3 (Could)
 |===
 
 == Feature 1: Doctor + Fix-Forward Onboarding
@@ -2005,6 +2021,778 @@ Docker configuration imported.
 * [ ] `save/load` round-trip works
 * [ ] Docker config import works for registries
 * [ ] Aliases can be enabled/disabled
+
+== Feature 11: Edge Shield UX Amplifier
+
+=== Overview
+
+The Svalinn edge layer (ReScript/Deno) amplifies UX by providing guided workflows and human-readable policy explanations—not a separate tool users must learn.
+
+=== Guided Workflows
+
+==== `vordr secure-run` (Interactive Hardening)
+
+[source,text]
+----
+$ vordr secure-run nginx:latest
+Analyzing image: nginx:latest
+
+Security recommendations:
+  1. [APPLIED] Drop all capabilities except NET_BIND_SERVICE
+  2. [APPLIED] Enable read-only root filesystem
+  3. [APPLIED] Run as non-root user (uid 101)
+  4. [PROMPT]  Restrict network to bridge only?
+
+Apply recommended security settings? [Y/n] y
+
+Starting container with hardened profile...
+Container 'nginx-secure-a1b2c3' running on port 8080
+----
+
+==== `vordr harden` (Analyze Running Container)
+
+[source,text]
+----
+$ vordr harden mycontainer
+Analyzing container: mycontainer
+
+Current security posture: MEDIUM (score: 65/100)
+
+Recommendations:
+  ⚠ CAP_NET_RAW enabled but not used → Drop capability
+  ⚠ Root filesystem writable → Enable read-only
+  ✓ User namespace enabled
+  ✓ Seccomp profile active
+
+Apply hardening? [y/N] y
+Recreating container with hardened settings...
+New security score: 92/100
+----
+
+==== `vordr harden-compose`
+
+[source,text]
+----
+$ vordr harden-compose compose.yaml
+Analyzing compose file...
+
+Service 'db' (postgres:15):
+  + Add: read_only: true
+  + Add: security_opt: [no-new-privileges:true]
+  + Add: cap_drop: [ALL]
+
+Service 'web' (nginx:latest):
+  + Add: user: "nginx"
+  + Add: cap_drop: [ALL]
+  + Add: cap_add: [NET_BIND_SERVICE]
+
+Write hardened compose file? [y/N] y
+Written: compose.hardened.yaml
+
+Diff:
+  --- compose.yaml
+  +++ compose.hardened.yaml
+  @@ services.db
+  +    read_only: true
+  +    security_opt:
+  +      - no-new-privileges:true
+----
+
+=== Policy Explanations
+
+==== `vordr explain` (Why Was This Blocked?)
+
+[source,text]
+----
+$ vordr run --privileged untrusted-image
+Error: Container blocked by Gatekeeper
+
+$ vordr explain
+Last rejection: 2025-01-15T10:30:00Z
+
+Gatekeeper Policy Violation:
+  Rule:    PRIVILEGED_REQUIRES_APPROVAL
+  Reason:  --privileged grants full host access
+
+What this means:
+  Privileged containers can:
+  - Access all host devices
+  - Modify kernel parameters
+  - Escape container isolation
+
+Alternatives:
+  1. Request specific capabilities instead:
+     vordr run --cap-add SYS_ADMIN ...
+
+  2. Use a security profile that allows this:
+     vordr run --profile=dev --privileged ...
+
+  3. Explicitly approve (requires confirmation):
+     vordr run --privileged --approve-privileged ...
+----
+
+==== Interactive Policy Explorer
+
+[source,text]
+----
+$ vordr policy explain CAP_SYS_ADMIN
+
+CAP_SYS_ADMIN - System Administration
+
+Allows:
+  - Mount/unmount filesystems
+  - Set hostname
+  - Load kernel modules
+  - Configure network interfaces
+
+Risk Level: HIGH
+
+Gatekeeper Rules:
+  - Requires --privileged OR explicit --cap-add
+  - Requires user namespace when running as root
+  - Blocked in 'strict' profile
+
+Used by:
+  - Nested container runtimes
+  - System management tools
+  - Some database initialization
+----
+
+=== Implementation
+
+The edge shield connects to Vordr via Unix socket and provides:
+
+1. *Policy explanation service* - Translates Gatekeeper codes to human-readable text
+2. *Security analyzer* - Inspects container configs and suggests hardening
+3. *Workflow orchestrator* - Guides users through secure patterns
+
+=== Files to Create/Modify
+
+* `svalinn/src/PolicyExplainer.res` (new) - Policy explanation logic
+* `svalinn/src/SecurityAnalyzer.res` (new) - Container security analysis
+* `svalinn/src/HardenWorkflow.res` (new) - Hardening workflow
+* `vordr/src/cli/explain.rs` (new) - CLI bridge to edge shield
+* `vordr/src/cli/harden.rs` (new) - Harden command
+
+== Feature 12: TUI Dashboard
+
+=== Overview
+
+A lightweight terminal UI (lazydocker-inspired) for live container management without Desktop-app complexity.
+
+=== Interface
+
+[source,text]
+----
+┌─ Vordr Dashboard ───────────────────────────────────────────────────────┐
+│ [C]ontainers  [I]mages  [V]olumes  [N]etworks  [L]ogs  [H]elp  [Q]uit  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ CONTAINERS (3 running, 2 stopped)                                       │
+│ ┌───────────────────────────────────────────────────────────────────┐  │
+│ │ STATUS    NAME           IMAGE           CPU    MEM     PORTS     │  │
+│ │ ▶ running web-server     nginx:1.25      2.1%   45MB    80:80     │  │
+│ │ ▶ running api-backend    myapp:latest    15.3%  256MB   3000:3000 │  │
+│ │ ▶ running postgres-db    postgres:15     0.5%   128MB   5432      │  │
+│ │ ■ exited  old-worker     worker:v1       -      -       -         │  │
+│ │ ■ exited  test-runner    alpine:3.18     -      -       -         │  │
+│ └───────────────────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ LOGS: web-server                                                        │
+│ ┌───────────────────────────────────────────────────────────────────┐  │
+│ │ 10:30:01 [info] GET /api/health 200 2ms                           │  │
+│ │ 10:30:02 [info] GET /static/app.js 200 5ms                        │  │
+│ │ 10:30:05 [info] POST /api/login 200 45ms                          │  │
+│ │ 10:30:07 [warn] Rate limit approaching for 192.168.1.100          │  │
+│ └───────────────────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ [Enter] Exec  [S]top  [R]estart  [D]elete  [P]rune  [/] Filter         │
+└─────────────────────────────────────────────────────────────────────────┘
+----
+
+=== Features
+
+==== Live Updates
+
+* Container status changes in real-time
+* CPU/memory stats updated every second
+* Log streaming with auto-scroll
+
+==== Quick Actions
+
+[cols="1,2",options="header"]
+|===
+|Key |Action
+
+|`Enter`
+|Open shell in selected container
+
+|`s`
+|Stop container
+
+|`r`
+|Restart container
+
+|`d`
+|Delete container (with confirmation)
+
+|`l`
+|Focus logs panel
+
+|`/`
+|Filter containers by name
+
+|`p`
+|Prune stopped containers
+
+|`?`
+|Show help
+|===
+
+==== Exec Terminal
+
+[source,text]
+----
+┌─ Exec: web-server ──────────────────────────────────────────────────────┐
+│ $ ls -la /etc/nginx                                                     │
+│ total 24                                                                │
+│ drwxr-xr-x 1 root root 4096 Jan 10 10:00 .                             │
+│ drwxr-xr-x 1 root root 4096 Jan 10 10:00 ..                            │
+│ -rw-r--r-- 1 root root  643 Jan 10 10:00 nginx.conf                    │
+│ drwxr-xr-x 1 root root 4096 Jan 10 10:00 conf.d                        │
+│ $                                                                       │
+│                                                                         │
+│ [Ctrl+D] Exit  [Ctrl+C] Cancel command                                 │
+└─────────────────────────────────────────────────────────────────────────┘
+----
+
+=== Implementation
+
+[source,rust]
+----
+// vordr/src/tui/mod.rs
+
+use ratatui::{backend::CrosstermBackend, Terminal};
+
+pub struct App {
+    containers: Vec<ContainerInfo>,
+    selected: usize,
+    logs: VecDeque<String>,
+    mode: AppMode,
+}
+
+pub enum AppMode {
+    Normal,
+    Logs,
+    Exec,
+    Filter,
+    Help,
+}
+
+pub async fn run_tui(cli: &Cli) -> Result<()> {
+    let mut terminal = setup_terminal()?;
+    let mut app = App::new(cli).await?;
+
+    loop {
+        terminal.draw(|f| ui::draw(f, &app))?;
+
+        if let Event::Key(key) = event::read()? {
+            match app.handle_key(key).await? {
+                Action::Quit => break,
+                Action::Refresh => app.refresh().await?,
+                Action::None => {}
+            }
+        }
+    }
+
+    restore_terminal()?;
+    Ok(())
+}
+----
+
+=== Dependencies
+
+[source,toml]
+----
+# Cargo.toml additions
+ratatui = "0.28"
+crossterm = "0.28"
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/tui/mod.rs` (new) - TUI module
+* `vordr/src/tui/app.rs` (new) - Application state
+* `vordr/src/tui/ui.rs` (new) - UI rendering
+* `vordr/src/tui/events.rs` (new) - Event handling
+* `vordr/src/cli/mod.rs` - Add `tui` command
+
+== Feature 13: Security Profiles
+
+=== Overview
+
+Predefined security profiles that bundle appropriate settings for different use cases, with explicit diffing to show what changes.
+
+=== Profiles
+
+==== `strict` - Maximum Security
+
+[source,toml]
+----
+[profile.strict]
+description = "Maximum security for production workloads"
+
+[profile.strict.capabilities]
+drop = ["ALL"]
+add = []  # Must be explicitly requested per-container
+
+[profile.strict.security]
+privileged = false
+no_new_privileges = true
+read_only_rootfs = true
+user_namespace = true
+
+[profile.strict.seccomp]
+profile = "strict"  # Custom restrictive profile
+
+[profile.strict.network]
+mode = "none"  # Must explicitly enable
+
+[profile.strict.resources]
+pids_limit = 100
+memory_limit = "512M"
+----
+
+==== `balanced` - Production Default
+
+[source,toml]
+----
+[profile.balanced]
+description = "Secure defaults with practical flexibility"
+
+[profile.balanced.capabilities]
+drop = ["ALL"]
+add = ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"]
+
+[profile.balanced.security]
+privileged = false
+no_new_privileges = true
+read_only_rootfs = false
+user_namespace = true
+
+[profile.balanced.seccomp]
+profile = "default"
+
+[profile.balanced.network]
+mode = "bridge"
+
+[profile.balanced.resources]
+pids_limit = 500
+memory_limit = "2G"
+----
+
+==== `dev` - Development Convenience
+
+[source,toml]
+----
+[profile.dev]
+description = "Relaxed settings for development and debugging"
+
+[profile.dev.capabilities]
+drop = ["SYS_ADMIN", "NET_ADMIN"]  # Still drop dangerous ones
+add = ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID", "NET_BIND_SERVICE"]
+
+[profile.dev.security]
+privileged = false  # Still blocked by default
+no_new_privileges = false  # Allow for debugging
+read_only_rootfs = false
+user_namespace = false  # Simpler for development
+
+[profile.dev.seccomp]
+profile = "unconfined"  # No seccomp restrictions
+
+[profile.dev.network]
+mode = "host"  # Allowed
+
+[profile.dev.resources]
+pids_limit = 0  # Unlimited
+memory_limit = ""  # Unlimited
+----
+
+=== CLI Usage
+
+==== Running with Profile
+
+[source,bash]
+----
+# Use strict profile
+vordr run --profile strict nginx:latest
+
+# Use dev profile for debugging
+vordr run --profile dev --cap-add SYS_PTRACE myapp:debug
+
+# Override profile settings
+vordr run --profile balanced --read-only myapp:latest
+----
+
+==== Comparing Profiles
+
+[source,text]
+----
+$ vordr profile diff strict balanced
+
+Profile Comparison: strict vs balanced
+======================================
+
+Capabilities:
+  strict:   drop ALL, add NONE
+  balanced: drop ALL, add CHOWN,DAC_OVERRIDE,FOWNER,SETGID,SETUID
+
+Security:
+  read_only_rootfs:  strict=true   balanced=false
+  (other settings identical)
+
+Network:
+  mode:              strict=none   balanced=bridge
+
+Resources:
+  pids_limit:        strict=100    balanced=500
+  memory_limit:      strict=512M   balanced=2G
+----
+
+==== Listing Profiles
+
+[source,text]
+----
+$ vordr profile ls
+NAME       DESCRIPTION                              SECURITY
+strict     Maximum security for production          ████████████ HIGH
+balanced   Secure defaults with practical flex      ████████░░░░ MEDIUM
+dev        Relaxed settings for development         ████░░░░░░░░ LOW
+
+$ vordr profile show strict
+Profile: strict
+
+Description: Maximum security for production workloads
+
+Capabilities:
+  Drop: ALL
+  Add:  (none)
+
+Security Options:
+  privileged:         false
+  no_new_privileges:  true
+  read_only_rootfs:   true
+  user_namespace:     true
+
+Seccomp: strict (custom profile)
+Network: none (must explicitly enable)
+
+Resource Limits:
+  PIDs:   100
+  Memory: 512M
+----
+
+==== Setting Default Profile
+
+[source,bash]
+----
+$ vordr profile set-default balanced
+Default profile set to: balanced
+
+$ vordr profile get-default
+balanced
+----
+
+=== Implementation
+
+[source,rust]
+----
+// vordr/src/cli/profile.rs
+
+#[derive(Parser, Debug)]
+pub struct ProfileArgs {
+    #[command(subcommand)]
+    pub command: ProfileCommands,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ProfileCommands {
+    /// List available profiles
+    Ls,
+
+    /// Show profile details
+    Show {
+        /// Profile name
+        name: String,
+    },
+
+    /// Compare two profiles
+    Diff {
+        /// First profile
+        profile1: String,
+        /// Second profile
+        profile2: String,
+    },
+
+    /// Set default profile
+    SetDefault {
+        /// Profile name
+        name: String,
+    },
+
+    /// Get current default profile
+    GetDefault,
+
+    /// Create custom profile
+    Create {
+        /// Profile name
+        name: String,
+        /// Base profile to extend
+        #[arg(long)]
+        from: Option<String>,
+    },
+}
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/profile.rs` (new) - Profile commands
+* `vordr/src/profile/mod.rs` (new) - Profile module
+* `vordr/src/profile/builtin.rs` (new) - Built-in profiles
+* `vordr/src/profile/loader.rs` (new) - Profile loading
+* `config/profiles/strict.toml` (new) - Strict profile definition
+* `config/profiles/balanced.toml` (new) - Balanced profile
+* `config/profiles/dev.toml` (new) - Dev profile
+
+== Feature 14: Cross-Platform Machine
+
+=== Overview
+
+`vordr machine` provides a consistent container experience on macOS and Windows by managing a Linux VM that runs the actual container runtime.
+
+=== Commands
+
+==== `vordr machine init`
+
+[source,text]
+----
+$ vordr machine init
+Initializing Vordr machine...
+
+Platform: macOS (arm64)
+Backend:  Apple Virtualization.framework
+
+Downloading: vordr-vm-arm64.qcow2 (450MB)
+[████████████████████████████████████████] 100%
+
+Creating machine 'default':
+  CPUs:    4
+  Memory:  4GB
+  Disk:    50GB
+
+Machine 'default' created successfully.
+
+Run 'vordr machine start' to start the machine.
+----
+
+==== `vordr machine start/stop`
+
+[source,bash]
+----
+$ vordr machine start
+Starting machine 'default'...
+Machine started. API available at /var/run/vordr.sock
+
+$ vordr machine stop
+Stopping machine 'default'...
+Machine stopped.
+----
+
+==== `vordr machine ssh`
+
+[source,bash]
+----
+$ vordr machine ssh
+Welcome to Vordr Machine (Alpine Linux)
+vordr@machine:~$ vordr ps
+CONTAINER ID   IMAGE   STATUS
+vordr@machine:~$
+----
+
+==== `vordr machine status`
+
+[source,text]
+----
+$ vordr machine status
+Machine: default
+State:   Running
+CPUs:    4
+Memory:  4.0 GB (2.1 GB used)
+Disk:    50 GB (12.3 GB used)
+API:     /var/run/vordr.sock
+Uptime:  2 days, 4 hours
+----
+
+=== Architecture
+
+[source,text]
+----
+┌─────────────────────────────────────────────────────────────┐
+│                    Host (macOS/Windows)                      │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  vordr CLI                                             │  │
+│  │    └── gRPC/Unix Socket ──────────────────────────┐   │  │
+│  └───────────────────────────────────────────────────│───┘  │
+│                                                      │       │
+│  ┌───────────────────────────────────────────────────│───┐  │
+│  │  Hypervisor (Virtualization.framework / Hyper-V)  │   │  │
+│  │  ┌─────────────────────────────────────────────────│─┐│  │
+│  │  │  Vordr Machine VM (Alpine Linux)                │ ││  │
+│  │  │                                                 │ ││  │
+│  │  │  ┌───────────────────┐  ┌──────────────────┐   │ ││  │
+│  │  │  │  vordr daemon     │◄─┤  gRPC server     │◄──┘ ││  │
+│  │  │  │  (full engine)    │  │  (API bridge)    │     ││  │
+│  │  │  └────────┬──────────┘  └──────────────────┘     ││  │
+│  │  │           │                                       ││  │
+│  │  │  ┌────────▼──────────┐                           ││  │
+│  │  │  │  youki/runc       │                           ││  │
+│  │  │  │  (OCI runtime)    │                           ││  │
+│  │  │  └───────────────────┘                           ││  │
+│  │  └──────────────────────────────────────────────────┘│  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+----
+
+=== Platform Backends
+
+[cols="1,1,2",options="header"]
+|===
+|Platform |Backend |Notes
+
+|macOS (arm64)
+|Virtualization.framework
+|Native Apple hypervisor, best performance
+
+|macOS (x86_64)
+|QEMU + HVF
+|Hardware virtualization with HVF
+
+|Windows
+|WSL2 / Hyper-V
+|Prefer WSL2 for simplicity
+
+|Windows (legacy)
+|QEMU
+|Fallback for older Windows
+|===
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/machine.rs` (new) - Machine commands
+* `vordr/src/machine/mod.rs` (new) - Machine module
+* `vordr/src/machine/vm.rs` (new) - VM management
+* `vordr/src/machine/api.rs` (new) - API bridge
+* `vordr-machine/` (new) - Separate binary for daemon
+
+== Implementation Order (Updated)
+
+=== Phase 1: Foundation (v0.2.0)
+
+1. *Config system* - Implement XDG-compliant configuration
+2. *Error framework* - Implement helpful error messages
+3. *Output formatting* - Implement table + JSON output
+4. *Shell completions* - Add clap_complete integration
+
+=== Phase 2: Doctor + System (v0.2.0)
+
+1. *System detection* - Distro, kernel, capabilities
+2. *Doctor checks* - All check categories
+3. *Fix-forward* - Actionable guidance
+4. *System df/prune* - Disk management commands
+
+=== Phase 3: Distribution (v0.2.0)
+
+1. *Release workflow* - GitHub Actions matrix build
+2. *Install script* - curl | bash installer
+3. *Checksums/signatures* - Security artifacts
+
+=== Phase 4: Testing (v0.2.0)
+
+1. *Test infrastructure* - Integration test framework
+2. *Happy path tests* - README flow validation
+3. *CI integration* - Run tests on clean runners
+
+=== Phase 5: Auth + Compose (v0.3.0)
+
+1. *Login/logout* - Registry authentication
+2. *Credential storage* - secret-service, file, pass backends
+3. *Compose subset* - up/down/ps with supported keys
+4. *Incompatibility reporting* - Clear warnings for unsupported keys
+
+=== Phase 6: Polish + Interop (v0.3.0)
+
+1. *CLI flag consistency* - Audit and standardize
+2. *Exit codes* - Implement proper exit codes
+3. *Docker aliases* - Optional compatibility layer
+4. *Save/load* - Image import/export
+5. *Documentation* - Update README and add INSTALL.adoc
+
+=== Phase 7: Security Profiles (v0.4.0)
+
+1. *Profile definitions* - strict/balanced/dev TOML files
+2. *Profile CLI* - ls/show/diff/set-default commands
+3. *Run integration* - --profile flag support
+4. *Custom profiles* - User-defined profiles
+
+=== Phase 8: Edge Shield + Explain (v0.4.0)
+
+1. *Policy explainer* - Human-readable Gatekeeper errors
+2. *Explain command* - `vordr explain` CLI
+3. *Harden workflow* - `vordr harden` command
+4. *Secure-run* - Guided container hardening
+
+=== Phase 9: TUI Dashboard (v0.5.0)
+
+1. *TUI framework* - ratatui setup
+2. *Container view* - Live container list with stats
+3. *Log streaming* - Real-time log display
+4. *Quick actions* - Keyboard shortcuts for common tasks
+
+=== Phase 10: Cross-Platform (v1.0.0)
+
+1. *Machine CLI* - init/start/stop/ssh commands
+2. *macOS backend* - Virtualization.framework
+3. *Windows backend* - WSL2/Hyper-V
+4. *API bridge* - gRPC over Unix socket
+
+=== Success Criteria (COULD Features)
+
+=== Edge Shield UX (COULD)
+
+* [ ] `vordr explain` shows human-readable policy violations
+* [ ] `vordr harden` analyzes container security
+* [ ] `vordr secure-run` applies recommended hardening
+
+=== TUI Dashboard (COULD)
+
+* [ ] Live container list with status updates
+* [ ] Log streaming with filter
+* [ ] Quick exec into containers
+* [ ] Keyboard shortcuts work
+
+=== Security Profiles (COULD)
+
+* [ ] `profile ls/show/diff` work
+* [ ] `run --profile strict` applies all restrictions
+* [ ] Custom profiles can be created
+* [ ] Profile differences clearly shown
+
+=== Cross-Platform (COULD)
+
+* [ ] `machine init` creates VM on macOS
+* [ ] `machine start/stop` manage lifecycle
+* [ ] Containers run transparently through VM
+* [ ] API bridge has acceptable latency (<10ms overhead)
 
 == References
 
