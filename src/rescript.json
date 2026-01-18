@@ -1,0 +1,39 @@
+{
+  "name": "svalinn-gateway",
+  "version": "0.1.0",
+  "sources": [
+    {
+      "dir": "gateway",
+      "subdirs": true
+    },
+    {
+      "dir": "validation",
+      "subdirs": true
+    },
+    {
+      "dir": "vordr",
+      "subdirs": true
+    },
+    {
+      "dir": "mcp",
+      "subdirs": true
+    },
+    {
+      "dir": "bindings",
+      "subdirs": true
+    }
+  ],
+  "package-specs": [
+    {
+      "module": "esmodule",
+      "in-source": true
+    }
+  ],
+  "suffix": ".res.mjs",
+  "bs-dependencies": [
+    "@rescript/core"
+  ],
+  "warnings": {
+    "number": "+A-48-42"
+  }
+}

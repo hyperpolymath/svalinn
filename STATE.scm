@@ -1,23 +1,210 @@
-;; SPDX-License-Identifier: AGPL-3.0-or-later
-;; STATE.scm - Current project state
+;; SPDX-License-Identifier: PMPL-1.0-or-later
+;; STATE.scm — Current state, progress, and session tracking for Svalinn
+;; Format: hyperpolymath/state.scm specification
+;; Reference: hyperpolymath/gitvisor/STATE.scm
 
-(define project-state
-  `((metadata
-      ((version . "1.0.0")
-       (schema-version . "1")
-       (created . "2025-12-29T03:24:16+00:00")
-       (updated . "2025-12-29T03:24:16+00:00")
-       (project . "Svalinn")
-       (repo . "svalinn")))
-    (current-position
-      ((phase . "initial")
-       (overall-completion . 0)
-       (working-features . ())))
-    (route-to-mvp
-      ((milestones
-        ((v0.1 . ((items . ("Initial setup"))))))))
-    (blockers-and-issues . ())
-    (critical-next-actions
-      ((immediate . ())
-       (this-week . ())
-       (this-month . ())))))
+(define-module (svalinn state)
+  #:export (metadata
+            project-context
+            current-position
+            route-to-mvp
+            blockers-and-issues
+            critical-next-actions
+            session-history
+            get-completion-percentage
+            get-blockers
+            get-milestone))
+
+(define metadata
+  '((version . "0.1.0")
+    (schema-version . "1.0")
+    (created . "2025-12-29")
+    (updated . "2026-01-19")
+    (project . "svalinn")
+    (repo . "https://gitlab.com/hyperpolymath/svalinn")))
+
+(define project-context
+  '((name . "Svalinn")
+    (tagline . "Edge shield for verified container operations via Vörðr")
+    (tech-stack . ((rescript . "Type-safe edge logic")
+                   (deno . "HTTP/3 runtime")
+                   (hono . "Web framework")))
+    (phase . "edge-shield-skeleton")))
+
+(define current-position
+  '((phase . "v0.1 — Edge Shield Skeleton")
+    (overall-completion . 60)
+
+    (components
+      ((name . "Gateway HTTP Server")
+       (completion . 100)
+       (status . "complete")
+       (notes . "Deno + Hono HTTP server with CORS, logging"))
+
+      ((name . "Request Validation")
+       (completion . 100)
+       (status . "complete")
+       (notes . "AJV JSON Schema validation against spec/schemas/"))
+
+      ((name . "Vörðr MCP Client")
+       (completion . 100)
+       (status . "complete")
+       (notes . "ReScript client calling Vörðr MCP adapter"))
+
+      ((name . "Svalinn MCP Server")
+       (completion . 100)
+       (status . "complete")
+       (notes . "8 edge tools: run, ps, stop, verify, policy, logs, exec, rm"))
+
+      ((name . "Edge Policy Engine")
+       (completion . 60)
+       (status . "in-progress")
+       (notes . "Basic registry allow/deny, needs full policy DSL"))
+
+      ((name . "Authentication")
+       (completion . 0)
+       (status . "pending")
+       (notes . "OAuth2/OIDC integration pending"))
+
+      ((name . "Web UI")
+       (completion . 40)
+       (status . "in-progress")
+       (notes . "ReScript/Tea UI with Api.res, Route.res, Main.res")))
+
+    (working-features
+      "HTTP API endpoints for containers, images, run, verify"
+      "JSON Schema validation against verified-container-spec"
+      "Vörðr MCP client with all tool bindings"
+      "Svalinn MCP server with 8 edge tools"
+      "Health check endpoint"
+      "Basic edge policy (registry allow/deny)"
+      "Justfile with dev/build/test commands")
+
+    (broken-features)))
+
+(define route-to-mvp
+  '((milestone-1
+     (name . "Gateway Foundation")
+     (target . "v0.1.0")
+     (status . "complete")
+     (items
+       ((item . "HTTP server with Hono") (done . #t))
+       ((item . "Request validation") (done . #t))
+       ((item . "Vörðr client") (done . #t))
+       ((item . "Health endpoint") (done . #t))
+       ((item . "CORS/logging middleware") (done . #t))))
+
+    (milestone-2
+     (name . "MCP Integration")
+     (target . "v0.2.0")
+     (status . "complete")
+     (items
+       ((item . "MCP server skeleton") (done . #t))
+       ((item . "Tool definitions") (done . #t))
+       ((item . "Tool handlers") (done . #t))
+       ((item . "Error handling") (done . #t))))
+
+    (milestone-3
+     (name . "Edge Policy")
+     (target . "v0.3.0")
+     (status . "in-progress")
+     (items
+       ((item . "Registry allow/deny") (done . #t))
+       ((item . "Image deny list") (done . #t))
+       ((item . "Policy DSL") (done . #f))
+       ((item . "Policy persistence") (done . #f))))
+
+    (milestone-4
+     (name . "Authentication")
+     (target . "v0.4.0")
+     (status . "pending")
+     (items
+       ((item . "OAuth2 integration") (done . #f))
+       ((item . "OIDC support") (done . #f))
+       ((item . "API key auth") (done . #f))
+       ((item . "Rate limiting") (done . #f))))
+
+    (milestone-5
+     (name . "Production MVP")
+     (target . "v0.5.0")
+     (status . "pending")
+     (items
+       ((item . "TLS/HTTP3 support") (done . #f))
+       ((item . "Metrics endpoint") (done . #f))
+       ((item . "Structured logging") (done . #f))
+       ((item . "Documentation") (done . #f))))))
+
+(define blockers-and-issues
+  '((critical . ())
+    (high . ())
+    (medium
+      ((id . "SVALINN-001")
+       (description . "Policy DSL design needed")
+       (type . "design")
+       (notes . "Need to define policy language for edge rules")))
+    (low
+      ((id . "SVALINN-002")
+       (description . "OpenLiteSpeed integration")
+       (type . "enhancement")
+       (notes . "HTTP/3 via OLS for production")))))
+
+(define critical-next-actions
+  '((immediate
+      "Test Vörðr integration end-to-end"
+      "Add basic test suite"
+      "Document API endpoints")
+
+    (this-week
+      "Design policy DSL"
+      "Implement policy persistence"
+      "Add OpenTelemetry tracing")
+
+    (this-month
+      "OAuth2/OIDC authentication"
+      "Rate limiting"
+      "Production deployment guide")))
+
+(define session-history
+  '((session-001
+     (date . "2025-12-29")
+     (duration . "1 hour")
+     (accomplishments
+       "Created STATE.scm"
+       "Created ECOSYSTEM.scm"
+       "Extracted vordr/ to separate repository"
+       "Updated README with architecture")
+     (next-session
+       "Implement edge gateway"
+       "Add MCP server"
+       "Create validation layer"))
+    (session-002
+     (date . "2026-01-19")
+     (duration . "1 hour")
+     (accomplishments
+       "Created src/ directory structure"
+       "Created deno.json and rescript.json configs"
+       "Implemented Hono HTTP gateway"
+       "Implemented JSON Schema validation"
+       "Created Vörðr MCP client"
+       "Created Svalinn MCP server with 8 tools"
+       "Updated Justfile with real commands"
+       "Added Deno and Fetch bindings for ReScript")
+     (next-session
+       "Add test suite"
+       "Design policy DSL"
+       "Implement authentication"))))
+
+;; Helper functions
+(define (get-completion-percentage)
+  (assoc-ref (assoc-ref current-position 'overall-completion) 'value))
+
+(define (get-blockers priority)
+  (assoc-ref blockers-and-issues priority))
+
+(define (get-milestone name)
+  (let ((milestones (list (assoc-ref route-to-mvp 'milestone-1)
+                          (assoc-ref route-to-mvp 'milestone-2)
+                          (assoc-ref route-to-mvp 'milestone-3)
+                          (assoc-ref route-to-mvp 'milestone-4)
+                          (assoc-ref route-to-mvp 'milestone-5))))
+    (find (lambda (m) (string=? (assoc-ref m 'name) name)) milestones)))
