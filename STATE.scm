@@ -32,8 +32,8 @@
     (phase . "edge-shield-skeleton")))
 
 (define current-position
-  '((phase . "v0.3 — Edge Policy Complete")
-    (overall-completion . 75)
+  '((phase . "v0.4 — Authentication Complete")
+    (overall-completion . 85)
 
     (components
       ((name . "Gateway HTTP Server")
@@ -64,12 +64,12 @@
       ((name . "Test Suite")
        (completion . 100)
        (status . "complete")
-       (notes . "68 tests: gateway, validation, policy, MCP, Vörðr integration"))
+       (notes . "90 tests: gateway, validation, policy, MCP, Vörðr, auth"))
 
       ((name . "Authentication")
-       (completion . 0)
-       (status . "pending")
-       (notes . "OAuth2/OIDC integration pending"))
+       (completion . 100)
+       (status . "complete")
+       (notes . "OAuth2/OIDC, API keys, mTLS, RBAC roles and scopes"))
 
       ((name . "Web UI")
        (completion . 40)
@@ -84,7 +84,12 @@
       "Health check endpoint"
       "Full policy DSL (types, evaluator, store, defaults)"
       "Policy presets: strict, standard, permissive"
-      "68 passing tests across 6 test files"
+      "OAuth2/OIDC authentication with JWT verification"
+      "API key authentication with scopes"
+      "mTLS client certificate authentication"
+      "RBAC with 4 default roles (admin, operator, viewer, auditor)"
+      "Scope-based authorization middleware"
+      "90 passing tests across 7 test files"
       "Vörðr integration tests (skip when not available)"
       "Justfile with dev/build/test commands")
 
@@ -125,12 +130,13 @@
     (milestone-4
      (name . "Authentication")
      (target . "v0.4.0")
-     (status . "pending")
+     (status . "complete")
      (items
-       ((item . "OAuth2 integration") (done . #f))
-       ((item . "OIDC support") (done . #f))
-       ((item . "API key auth") (done . #f))
-       ((item . "Rate limiting") (done . #f))))
+       ((item . "OAuth2 integration") (done . #t))
+       ((item . "OIDC support") (done . #t))
+       ((item . "API key auth") (done . #t))
+       ((item . "mTLS support") (done . #t))
+       ((item . "RBAC roles/scopes") (done . #t))))
 
     (milestone-5
      (name . "Production MVP")
@@ -154,18 +160,19 @@
 
 (define critical-next-actions
   '((immediate
-      "Implement OAuth2/OIDC authentication"
-      "Document API endpoints")
+      "Add rate limiting middleware"
+      "Document API endpoints"
+      "Add metrics endpoint")
 
     (this-week
-      "Add API key authentication"
-      "Add rate limiting"
-      "Add OpenTelemetry tracing")
+      "Add OpenTelemetry tracing"
+      "TLS/HTTP3 support"
+      "Structured logging")
 
     (this-month
-      "TLS/HTTP3 support"
       "Production deployment guide"
-      "Metrics endpoint")))
+      "Web UI completion"
+      "Performance testing")))
 
 (define session-history
   '((session-001
@@ -209,6 +216,22 @@
      (next-session
        "Implement OAuth2/OIDC authentication"
        "Add rate limiting"
+       "Document API endpoints"))
+    (session-004
+     (date . "2026-01-18")
+     (duration . "20 minutes")
+     (accomplishments
+       "Implemented OAuth2/OIDC authentication module"
+       "Added JWT verification with JWKS support"
+       "Created API key authentication"
+       "Added mTLS client certificate authentication"
+       "Implemented RBAC with 4 default roles"
+       "Added scope-based authorization middleware"
+       "Created auth tests (22 passing)"
+       "Total test count: 90 tests across 7 files")
+     (next-session
+       "Add rate limiting middleware"
+       "Add metrics endpoint"
        "Document API endpoints"))))
 
 ;; Helper functions
