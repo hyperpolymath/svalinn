@@ -32,8 +32,8 @@
     (phase . "edge-shield-skeleton")))
 
 (define current-position
-  '((phase . "v0.1 — Edge Shield Skeleton")
-    (overall-completion . 60)
+  '((phase . "v0.3 — Edge Policy Complete")
+    (overall-completion . 75)
 
     (components
       ((name . "Gateway HTTP Server")
@@ -57,9 +57,14 @@
        (notes . "8 edge tools: run, ps, stop, verify, policy, logs, exec, rm"))
 
       ((name . "Edge Policy Engine")
-       (completion . 60)
-       (status . "in-progress")
-       (notes . "Basic registry allow/deny, needs full policy DSL"))
+       (completion . 100)
+       (status . "complete")
+       (notes . "Full policy DSL with strict/standard/permissive presets"))
+
+      ((name . "Test Suite")
+       (completion . 100)
+       (status . "complete")
+       (notes . "68 tests: gateway, validation, policy, MCP, Vörðr integration"))
 
       ((name . "Authentication")
        (completion . 0)
@@ -77,7 +82,10 @@
       "Vörðr MCP client with all tool bindings"
       "Svalinn MCP server with 8 edge tools"
       "Health check endpoint"
-      "Basic edge policy (registry allow/deny)"
+      "Full policy DSL (types, evaluator, store, defaults)"
+      "Policy presets: strict, standard, permissive"
+      "68 passing tests across 6 test files"
+      "Vörðr integration tests (skip when not available)"
       "Justfile with dev/build/test commands")
 
     (broken-features)))
@@ -107,12 +115,12 @@
     (milestone-3
      (name . "Edge Policy")
      (target . "v0.3.0")
-     (status . "in-progress")
+     (status . "complete")
      (items
        ((item . "Registry allow/deny") (done . #t))
        ((item . "Image deny list") (done . #t))
-       ((item . "Policy DSL") (done . #f))
-       ((item . "Policy persistence") (done . #f))))
+       ((item . "Policy DSL") (done . #t))
+       ((item . "Policy persistence") (done . #t))))
 
     (milestone-4
      (name . "Authentication")
@@ -137,11 +145,7 @@
 (define blockers-and-issues
   '((critical . ())
     (high . ())
-    (medium
-      ((id . "SVALINN-001")
-       (description . "Policy DSL design needed")
-       (type . "design")
-       (notes . "Need to define policy language for edge rules")))
+    (medium . ())
     (low
       ((id . "SVALINN-002")
        (description . "OpenLiteSpeed integration")
@@ -150,19 +154,18 @@
 
 (define critical-next-actions
   '((immediate
-      "Test Vörðr integration end-to-end"
-      "Add basic test suite"
+      "Implement OAuth2/OIDC authentication"
       "Document API endpoints")
 
     (this-week
-      "Design policy DSL"
-      "Implement policy persistence"
+      "Add API key authentication"
+      "Add rate limiting"
       "Add OpenTelemetry tracing")
 
     (this-month
-      "OAuth2/OIDC authentication"
-      "Rate limiting"
-      "Production deployment guide")))
+      "TLS/HTTP3 support"
+      "Production deployment guide"
+      "Metrics endpoint")))
 
 (define session-history
   '((session-001
@@ -192,7 +195,21 @@
      (next-session
        "Add test suite"
        "Design policy DSL"
-       "Implement authentication"))))
+       "Implement authentication"))
+    (session-003
+     (date . "2026-01-18")
+     (duration . "30 minutes")
+     (accomplishments
+       "Created test suite with 68 tests across 6 files"
+       "Implemented policy DSL with types, evaluator, store"
+       "Created three policy presets: strict, standard, permissive"
+       "Wrote policy specification (POLICY-DSL.adoc)"
+       "Created Vörðr integration tests (skip when not available)"
+       "All tests passing")
+     (next-session
+       "Implement OAuth2/OIDC authentication"
+       "Add rate limiting"
+       "Document API endpoints"))))
 
 ;; Helper functions
 (define (get-completion-percentage)
