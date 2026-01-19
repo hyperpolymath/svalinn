@@ -14,7 +14,7 @@ image:https://img.shields.io/badge/spec-verified--container--spec-green.svg[Spec
 *Post-Cloud Security Architecture: Edge gateway for verified container operations.*
 
 [.lead]
-Svalinn is a Deno-based HTTP gateway that validates container operation requests and delegates to https://github.com/hyperpolymath/vordr[Vörðr]. It provides REST API access, JSON Schema validation, policy enforcement, OAuth2/JWT authentication, and a Docker Compose-compatible orchestration CLI (`svalinn-compose`).
+Svalinn is a Deno-based HTTP gateway that validates container operation requests and delegates to https://github.com/hyperpolymath/vordr[Vörðr]. It provides REST API access, JSON Schema validation, policy enforcement, OAuth2/JWT authentication, and a Compose-compatible orchestration CLI (`svalinn-compose`).
 
 == Project Status
 
@@ -40,7 +40,7 @@ Svalinn is a Deno-based HTTP gateway that validates container operation requests
 
 |*svalinn-compose*
 |Complete
-|Docker Compose-compatible multi-container orchestration CLI
+|Compose-compatible multi-container orchestration CLI
 |===
 
 == Architecture
@@ -127,7 +127,7 @@ just test
 
 == svalinn-compose
 
-Docker Compose-compatible orchestration with security extensions.
+Compose-compatible orchestration with security extensions.
 
 [source,shell]
 ----
