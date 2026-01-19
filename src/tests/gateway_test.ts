@@ -4,8 +4,8 @@
 import { assertEquals, assertExists } from "jsr:@std/assert@1";
 import { Hono } from "@hono/hono";
 
-// Mock Vörðr endpoint for testing
-const mockVordrServer = () => {
+// Mock Vörðr endpoint for testing (kept for future integration tests)
+const _mockVordrServer = () => {
   const app = new Hono();
 
   app.post("/", async (c) => {

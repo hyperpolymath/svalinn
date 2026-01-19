@@ -6,7 +6,7 @@ import { parseArgs } from "jsr:@std/cli@^1/parse-args";
 import { join } from "@std/path";
 import { exists } from "@std/fs";
 import { ComposeOrchestrator } from "./orchestrator.ts";
-import type { ComposeFile, ProjectState } from "./types.ts";
+import type { ComposeFile } from "./types.ts";
 
 const VERSION = "0.1.0";
 
@@ -96,7 +96,7 @@ async function findComposeFile(specified?: string): Promise<string> {
   }
 
   throw new Error(
-    "No compose file found. Create svalinn-compose.yaml or specify with -f"
+    "No compose file found. Create svalinn-compose.yaml or specify with -f",
   );
 }
 
@@ -109,22 +109,17 @@ function formatDuration(ms: number): string {
 function formatTable(
   headers: string[],
   rows: string[][],
-  columnWidths?: number[]
+  columnWidths?: number[],
 ): string {
-  const widths =
-    columnWidths ||
-    headers.map((h, i) =>
-      Math.max(h.length, ...rows.map((r) => (r[i] || "").length))
-    );
+  const widths = columnWidths ||
+    headers.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] || "").length)));
 
   const separator = widths.map((w) => "─".repeat(w + 2)).join("┼");
   const headerRow = headers
     .map((h, i) => ` ${h.padEnd(widths[i])} `)
     .join("│");
   const dataRows = rows
-    .map((row) =>
-      row.map((cell, i) => ` ${(cell || "").padEnd(widths[i])} `).join("│")
-    )
+    .map((row) => row.map((cell, i) => ` ${(cell || "").padEnd(widths[i])} `).join("│"))
     .join("\n");
 
   return `${headerRow}\n─${separator}─\n${dataRows}`;
@@ -133,7 +128,7 @@ function formatTable(
 async function cmdUp(
   orchestrator: ComposeOrchestrator,
   composeFile: ComposeFile,
-  args: ReturnType<typeof parseArgs>
+  args: ReturnType<typeof parseArgs>,
 ): Promise<void> {
   console.log(`\n🚀 Starting project: ${composeFile.name}\n`);
 
@@ -168,7 +163,7 @@ async function cmdUp(
 async function cmdDown(
   orchestrator: ComposeOrchestrator,
   composeFile: ComposeFile,
-  args: ReturnType<typeof parseArgs>
+  args: ReturnType<typeof parseArgs>,
 ): Promise<void> {
   console.log(`\n🛑 Stopping project: ${composeFile.name}\n`);
 
@@ -188,7 +183,7 @@ async function cmdDown(
 
 async function cmdPs(
   orchestrator: ComposeOrchestrator,
-  composeFile: ComposeFile
+  composeFile: ComposeFile,
 ): Promise<void> {
   const projects = await orchestrator.ps(composeFile.name);
 
@@ -207,11 +202,11 @@ async function cmdPs(
       instance.image,
       instance.state,
       instance.ports.map((p) => `${p.hostPort}:${p.containerPort}`).join(", ") ||
-        "-",
+      "-",
     ]);
 
     console.log(
-      formatTable(["SERVICE", "CONTAINER ID", "IMAGE", "STATUS", "PORTS"], rows)
+      formatTable(["SERVICE", "CONTAINER ID", "IMAGE", "STATUS", "PORTS"], rows),
     );
   }
 }
@@ -219,7 +214,7 @@ async function cmdPs(
 async function cmdLogs(
   orchestrator: ComposeOrchestrator,
   composeFile: ComposeFile,
-  args: ReturnType<typeof parseArgs>
+  args: ReturnType<typeof parseArgs>,
 ): Promise<void> {
   const services = args._.slice(1).map(String);
 
@@ -237,7 +232,7 @@ async function cmdLogs(
 async function cmdRestart(
   orchestrator: ComposeOrchestrator,
   composeFile: ComposeFile,
-  args: ReturnType<typeof parseArgs>
+  args: ReturnType<typeof parseArgs>,
 ): Promise<void> {
   const services = args._.slice(1).map(String);
 
@@ -245,7 +240,7 @@ async function cmdRestart(
 
   await orchestrator.restart(
     composeFile.name!,
-    services.length > 0 ? services : undefined
+    services.length > 0 ? services : undefined,
   );
 
   console.log("✓ Services restarted");
@@ -254,7 +249,7 @@ async function cmdRestart(
 async function cmdScale(
   orchestrator: ComposeOrchestrator,
   composeFile: ComposeFile,
-  args: ReturnType<typeof parseArgs>
+  args: ReturnType<typeof parseArgs>,
 ): Promise<void> {
   const scaleArgs = args._.slice(1).map(String);
 
@@ -273,10 +268,10 @@ async function cmdScale(
   }
 }
 
-async function cmdConfig(
-  orchestrator: ComposeOrchestrator,
-  composeFile: ComposeFile
-): Promise<void> {
+function cmdConfig(
+  _orchestrator: ComposeOrchestrator,
+  composeFile: ComposeFile,
+): void {
   console.log("\n✓ Compose file is valid\n");
   console.log(`Project: ${composeFile.name}`);
   console.log(`Version: ${composeFile.version}`);
@@ -382,7 +377,7 @@ async function main(): Promise<void> {
       break;
 
     case "config":
-      await cmdConfig(orchestrator, composeFile);
+      cmdConfig(orchestrator, composeFile);
       break;
 
     default:

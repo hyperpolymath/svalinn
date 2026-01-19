@@ -162,7 +162,7 @@ export class VerifiedContainerSpec {
   /**
    * Verify an attestation bundle against the trust store
    */
-  async verifyBundle(bundle: AttestationBundle): Promise<VerificationResult> {
+  verifyBundle(bundle: AttestationBundle): Promise<VerificationResult> {
     if (!this.trustStore) {
       throw new Error("Trust store not loaded");
     }
@@ -181,9 +181,7 @@ export class VerifiedContainerSpec {
     });
 
     // Check 2: Minimum log entries
-    const validLogEntries = bundle.logEntries.filter((entry) =>
-      this.verifyLogEntry(entry)
-    );
+    const validLogEntries = bundle.logEntries.filter((entry) => this.verifyLogEntry(entry));
     checks.push({
       name: "minimum_log_entries",
       passed: validLogEntries.length >= policy.minLogEntries,
@@ -200,7 +198,9 @@ export class VerifiedContainerSpec {
       passed: hasAllRequired,
       message: hasAllRequired
         ? "All required attestations present"
-        : `Missing: ${policy.requiredAttestations.filter((r) => !attestationTypes.includes(r)).join(", ")}`,
+        : `Missing: ${
+          policy.requiredAttestations.filter((r) => !attestationTypes.includes(r)).join(", ")
+        }`,
     });
 
     // Check 4: Registry allowlist (if configured)
@@ -210,25 +210,27 @@ export class VerifiedContainerSpec {
       checks.push({
         name: "allowed_registry",
         passed: allowed,
-        message: allowed ? `Registry ${registry} is allowed` : `Registry ${registry} not in allowlist`,
+        message: allowed
+          ? `Registry ${registry} is allowed`
+          : `Registry ${registry} not in allowlist`,
       });
     }
 
     const allPassed = checks.every((c) => c.passed);
 
-    return {
+    return Promise.resolve({
       verified: allPassed,
       subject: bundle.subject.digest,
       policy: "default",
       checks,
       timestamp: new Date().toISOString(),
-    };
+    });
   }
 
   /**
    * Verify a signature against a trusted key
    */
-  private verifySignature(sig: Signature, digest: string): boolean {
+  private verifySignature(sig: Signature, _digest: string): boolean {
     if (!this.trustStore) return false;
 
     const key = this.trustStore.keys.find((k) => k.id === sig.keyId);

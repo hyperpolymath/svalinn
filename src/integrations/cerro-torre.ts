@@ -181,7 +181,7 @@ export class CerroTorre {
       checkSbom?: boolean;
       checkSignature?: boolean;
       checkProvenance?: boolean;
-    } = {}
+    } = {},
   ): Promise<CtpVerifyResult> {
     const args = ["verify", bundlePath];
 
@@ -265,7 +265,7 @@ export class CerroTorre {
       ports?: string[];
       volumes?: string[];
       detach?: boolean;
-    } = {}
+    } = {},
   ): Promise<CtpRunResult> {
     // Step 1: Verify bundle first (unless explicitly skipped)
     if (options.verify !== false) {
@@ -352,7 +352,7 @@ export class CerroTorre {
     options: {
       sign?: boolean;
       keyId?: string;
-    } = {}
+    } = {},
   ): Promise<{ success: boolean; bundlePath?: string; error?: string }> {
     const args = ["pack", manifestPath, "-o", outputPath];
 
@@ -379,12 +379,14 @@ export class CerroTorre {
   /**
    * List trusted keys
    */
-  async keyList(): Promise<Array<{
-    id: string;
-    algorithm: string;
-    trustLevel: string;
-    expires?: string;
-  }>> {
+  async keyList(): Promise<
+    Array<{
+      id: string;
+      algorithm: string;
+      trustLevel: string;
+      expires?: string;
+    }>
+  > {
     const command = new Deno.Command(this.ctPath, {
       args: ["key", "list", "--json"],
       stdout: "piped",
@@ -409,7 +411,7 @@ export class CerroTorre {
    */
   async keyImport(
     keyPath: string,
-    options: { trustLevel?: "marginal" | "full" | "ultimate" } = {}
+    options: { trustLevel?: "marginal" | "full" | "ultimate" } = {},
   ): Promise<{ success: boolean; keyId?: string; error?: string }> {
     const args = ["key", "import", keyPath];
 
@@ -438,7 +440,7 @@ export class CerroTorre {
 
   private parseVerifyOutput(
     stdout: string,
-    stderr: string
+    stderr: string,
   ): Array<{ name: string; passed: boolean; message?: string }> {
     const checks: Array<{ name: string; passed: boolean; message?: string }> = [];
 

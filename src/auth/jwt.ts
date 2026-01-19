@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // JWT verification for Svalinn
 
-import type { TokenPayload, OIDCConfig } from "./types.ts";
+import type { OIDCConfig, TokenPayload } from "./types.ts";
 
 /**
  * JWKS key
@@ -67,7 +67,9 @@ export async function fetchJWKS(jwksUri: string): Promise<JWKS> {
 /**
  * Decode JWT without verification (for header inspection)
  */
-export function decodeJWT(token: string): { header: Record<string, unknown>; payload: TokenPayload } {
+export function decodeJWT(
+  token: string,
+): { header: Record<string, unknown>; payload: TokenPayload } {
   const parts = token.split(".");
   if (parts.length !== 3) {
     throw new Error("Invalid JWT format");
@@ -84,7 +86,7 @@ export function decodeJWT(token: string): { header: Record<string, unknown>; pay
  */
 export async function verifyJWT(
   token: string,
-  config: OIDCConfig
+  config: OIDCConfig,
 ): Promise<TokenPayload> {
   const { header, payload } = decodeJWT(token);
 
@@ -140,7 +142,7 @@ async function importJWK(jwk: JWK, alg: string): Promise<CryptoKey> {
     jwk as JsonWebKey,
     algorithm,
     true,
-    ["verify"]
+    ["verify"],
   );
 }
 
@@ -182,7 +184,7 @@ async function verifySignature(token: string, key: CryptoKey): Promise<boolean> 
     algorithm,
     key,
     signature.buffer as ArrayBuffer,
-    data.buffer as ArrayBuffer
+    data.buffer as ArrayBuffer,
   );
 }
 

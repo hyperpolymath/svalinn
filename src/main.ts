@@ -50,7 +50,10 @@ async function loadSchemas() {
 }
 
 // Validate request against schema
-function validateRequest(schemaName: string, data: unknown): { valid: boolean; errors?: unknown[] } {
+function validateRequest(
+  schemaName: string,
+  data: unknown,
+): { valid: boolean; errors?: unknown[] } {
   const validate = ajv.getSchema(schemaName);
   if (!validate) {
     return { valid: false, errors: [{ message: `Schema ${schemaName} not found` }] };
@@ -150,7 +153,7 @@ app.post("/v1/run", async (c) => {
         message: "Request validation failed",
         details: validation.errors,
       },
-      400
+      400,
     );
   }
 
@@ -180,7 +183,7 @@ app.post("/v1/run", async (c) => {
         code: "RUN_ERROR",
         message: String(e),
       },
-      500
+      500,
     );
   }
 });
@@ -198,7 +201,7 @@ app.post("/v1/verify", async (c) => {
         message: "Request validation failed",
         details: validation.errors,
       },
-      400
+      400,
     );
   }
 
@@ -215,7 +218,7 @@ app.post("/v1/verify", async (c) => {
         code: "VERIFY_ERROR",
         message: String(e),
       },
-      500
+      500,
     );
   }
 });

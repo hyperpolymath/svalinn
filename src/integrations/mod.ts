@@ -7,6 +7,10 @@
 // - cerro-torre: Supply-chain verified image building
 // - vordr: Formally verified container runtime
 
-export { VerifiedContainerSpec, type TrustStore, type AttestationBundle } from "./verified-container-spec.ts";
-export { PolyContainerMcp, type ContainerRuntime } from "./poly-container-mcp.ts";
+export {
+  type AttestationBundle,
+  type TrustStore,
+  VerifiedContainerSpec,
+} from "./verified-container-spec.ts";
+export { type ContainerRuntime, PolyContainerMcp } from "./poly-container-mcp.ts";
 export { CerroTorre, type CtpBundle, type CtpManifest } from "./cerro-torre.ts";

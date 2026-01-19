@@ -4,12 +4,12 @@
 export { ComposeOrchestrator } from "./orchestrator.ts";
 export type {
   ComposeFile,
-  Service,
-  ServiceInstance,
-  ProjectState,
   ComposeResult,
   Network,
-  Volume,
+  ProjectState,
   Secret,
+  Service,
+  ServiceInstance,
   SvalinnExtension,
+  Volume,
 } from "./types.ts";

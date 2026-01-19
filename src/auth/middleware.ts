@@ -2,15 +2,8 @@
 // Authentication middleware for Svalinn
 
 import type { Context, Next } from "npm:hono@4";
-import type {
-  AuthConfig,
-  AuthResult,
-  AuthMethod,
-  UserContext,
-  TokenPayload,
-  ApiKeyInfo,
-} from "./types.ts";
-import { verifyJWT, decodeJWT } from "./jwt.ts";
+import type { AuthConfig, AuthMethod, AuthResult, TokenPayload, UserContext } from "./types.ts";
+import { decodeJWT, verifyJWT } from "./jwt.ts";
 
 /**
  * Extended context with user info
@@ -63,7 +56,7 @@ export function authMiddleware(config: AuthConfig) {
           error: "Unauthorized",
           message: result.error,
         },
-        401
+        401,
       );
     }
 
@@ -91,7 +84,7 @@ export function authMiddleware(config: AuthConfig) {
 async function tryAuthenticate(
   c: Context,
   config: AuthConfig,
-  method: AuthMethod
+  method: AuthMethod,
 ): Promise<AuthResult> {
   switch (method) {
     case "oauth2":
@@ -113,7 +106,7 @@ async function tryAuthenticate(
  */
 async function authenticateBearerToken(
   c: Context,
-  config: AuthConfig
+  config: AuthConfig,
 ): Promise<AuthResult> {
   const auth = c.req.header("Authorization");
   if (!auth || !auth.startsWith("Bearer ")) {
@@ -139,9 +132,7 @@ async function authenticateBearerToken(
     }
 
     // Extract scopes
-    const scopes = payload.scope
-      ? payload.scope.split(" ")
-      : [];
+    const scopes = payload.scope ? payload.scope.split(" ") : [];
 
     return {
       authenticated: true,
@@ -164,7 +155,7 @@ async function authenticateBearerToken(
  */
 function authenticateApiKey(
   c: Context,
-  config: AuthConfig
+  config: AuthConfig,
 ): AuthResult {
   if (!config.apiKey) {
     return {
@@ -266,7 +257,7 @@ export function requireScopes(...requiredScopes: string[]) {
     }
 
     const missingScopes = requiredScopes.filter(
-      (s) => !user.scopes.includes(s) && !user.scopes.includes("svalinn:admin")
+      (s) => !user.scopes.includes(s) && !user.scopes.includes("svalinn:admin"),
     );
 
     if (missingScopes.length > 0) {
@@ -277,7 +268,7 @@ export function requireScopes(...requiredScopes: string[]) {
           required: requiredScopes,
           missing: missingScopes,
         },
-        403
+        403,
       );
     }
 
@@ -305,7 +296,7 @@ export function requireGroups(...requiredGroups: string[]) {
           message: "Not a member of required groups",
           required: requiredGroups,
         },
-        403
+        403,
       );
     }
 

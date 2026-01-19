@@ -168,7 +168,7 @@ export class PolyContainerMcp {
   async callTool(
     tool: string,
     args: Record<string, unknown>,
-    runtime?: ContainerRuntime
+    runtime?: ContainerRuntime,
   ): Promise<unknown> {
     const targetRuntime = runtime || this.preferredRuntime;
 
@@ -208,7 +208,7 @@ export class PolyContainerMcp {
       env?: Record<string, string>;
       network?: string;
       runtime?: ContainerRuntime;
-    } = {}
+    } = {},
   ): Promise<ContainerResult> {
     const result = await this.callTool("container_run", {
       image,
@@ -223,7 +223,10 @@ export class PolyContainerMcp {
     return result as ContainerResult;
   }
 
-  async rm(containerId: string, options: { force?: boolean; volumes?: boolean } = {}): Promise<ContainerResult> {
+  async rm(
+    containerId: string,
+    options: { force?: boolean; volumes?: boolean } = {},
+  ): Promise<ContainerResult> {
     const result = await this.callTool("container_rm", { containerId, ...options });
     return result as ContainerResult;
   }
@@ -233,7 +236,10 @@ export class PolyContainerMcp {
     return result as unknown[];
   }
 
-  async logs(containerId: string, options: { follow?: boolean; tail?: number } = {}): Promise<string> {
+  async logs(
+    containerId: string,
+    options: { follow?: boolean; tail?: number } = {},
+  ): Promise<string> {
     const result = await this.callTool("container_logs", { containerId, ...options });
     return (result as { logs: string }).logs;
   }
@@ -241,7 +247,7 @@ export class PolyContainerMcp {
   async exec(
     containerId: string,
     command: string[],
-    options: { interactive?: boolean; tty?: boolean } = {}
+    options: { interactive?: boolean; tty?: boolean } = {},
   ): Promise<ContainerResult> {
     const result = await this.callTool("container_exec", {
       containerId,
@@ -270,7 +276,7 @@ export class PolyContainerMcp {
       dockerfile?: string;
       buildArgs?: Record<string, string>;
       runtime?: ContainerRuntime;
-    } = {}
+    } = {},
   ): Promise<ImageResult> {
     const result = await this.callTool("image_build", { context, ...options }, options.runtime);
     return result as ImageResult;
@@ -288,14 +294,14 @@ export class PolyContainerMcp {
 
   // --- Network Operations ---
 
-  async networkCreate(
+  networkCreate(
     name: string,
-    options: { driver?: string; subnet?: string } = {}
+    options: { driver?: string; subnet?: string } = {},
   ): Promise<unknown> {
     return this.callTool("network_create", { name, ...options });
   }
 
-  async networkRm(name: string): Promise<unknown> {
+  networkRm(name: string): Promise<unknown> {
     return this.callTool("network_rm", { name });
   }
 
@@ -306,11 +312,11 @@ export class PolyContainerMcp {
 
   // --- Volume Operations ---
 
-  async volumeCreate(name: string, options: { driver?: string } = {}): Promise<unknown> {
+  volumeCreate(name: string, options: { driver?: string } = {}): Promise<unknown> {
     return this.callTool("volume_create", { name, ...options });
   }
 
-  async volumeRm(name: string, options: { force?: boolean } = {}): Promise<unknown> {
+  volumeRm(name: string, options: { force?: boolean } = {}): Promise<unknown> {
     return this.callTool("volume_rm", { name, ...options });
   }
 
@@ -321,16 +327,16 @@ export class PolyContainerMcp {
 
   // --- Compose Operations ---
 
-  async composeUp(
+  composeUp(
     file: string,
-    options: { detach?: boolean; build?: boolean } = {}
+    options: { detach?: boolean; build?: boolean } = {},
   ): Promise<unknown> {
     return this.callTool("compose_up", { file, ...options });
   }
 
-  async composeDown(
+  composeDown(
     file: string,
-    options: { volumes?: boolean } = {}
+    options: { volumes?: boolean } = {},
   ): Promise<unknown> {
     return this.callTool("compose_down", { file, ...options });
   }

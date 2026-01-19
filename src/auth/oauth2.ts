@@ -22,7 +22,7 @@ export interface TokenResponse {
 export function getAuthorizationUrl(
   config: OAuth2Config | OIDCConfig,
   state: string,
-  nonce?: string
+  nonce?: string,
 ): string {
   const params = new URLSearchParams({
     response_type: "code",
@@ -45,7 +45,7 @@ export function getAuthorizationUrl(
  */
 export async function exchangeCode(
   config: OAuth2Config,
-  code: string
+  code: string,
 ): Promise<TokenResponse> {
   const params = new URLSearchParams({
     grant_type: "authorization_code",
@@ -76,7 +76,7 @@ export async function exchangeCode(
  */
 export async function refreshToken(
   config: OAuth2Config,
-  refreshToken: string
+  refreshToken: string,
 ): Promise<TokenResponse> {
   const params = new URLSearchParams({
     grant_type: "refresh_token",
@@ -106,7 +106,7 @@ export async function refreshToken(
  */
 export async function getUserInfo(
   config: OIDCConfig,
-  accessToken: string
+  accessToken: string,
 ): Promise<Record<string, unknown>> {
   const response = await fetch(config.userInfoEndpoint, {
     headers: {
@@ -128,7 +128,7 @@ export async function getUserInfo(
 export function getLogoutUrl(
   config: OIDCConfig,
   idToken: string,
-  postLogoutRedirectUri: string
+  postLogoutRedirectUri: string,
 ): string | null {
   if (!config.endSessionEndpoint) {
     return null;
@@ -164,7 +164,7 @@ export function generateNonce(): string {
 export async function handleCallback(
   c: Context,
   config: OAuth2Config | OIDCConfig,
-  expectedState: string
+  expectedState: string,
 ): Promise<TokenResponse> {
   const code = c.req.query("code");
   const state = c.req.query("state");
@@ -191,7 +191,7 @@ export async function handleCallback(
  */
 export async function clientCredentials(
   config: OAuth2Config,
-  scopes?: string[]
+  scopes?: string[],
 ): Promise<TokenResponse> {
   const params = new URLSearchParams({
     grant_type: "client_credentials",
@@ -226,7 +226,7 @@ export async function introspectToken(
   introspectionEndpoint: string,
   token: string,
   clientId: string,
-  clientSecret: string
+  clientSecret: string,
 ): Promise<Record<string, unknown>> {
   const params = new URLSearchParams({
     token,
@@ -258,7 +258,7 @@ export async function revokeToken(
   token: string,
   clientId: string,
   clientSecret: string,
-  tokenTypeHint?: "access_token" | "refresh_token"
+  tokenTypeHint?: "access_token" | "refresh_token",
 ): Promise<void> {
   const params = new URLSearchParams({
     token,

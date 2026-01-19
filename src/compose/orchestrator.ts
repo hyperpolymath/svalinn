@@ -2,16 +2,16 @@
 // Svalinn Compose - Orchestrator
 
 import { parse as parseYaml } from "jsr:@std/yaml@^1";
-import { join, dirname, basename } from "@std/path";
+import { basename, dirname } from "@std/path";
 import type {
   ComposeFile,
-  Service,
-  ServiceInstance,
-  ProjectState,
   ComposeResult,
+  DependsOnConfig,
   PortConfig,
   PortMapping,
-  DependsOnConfig,
+  ProjectState,
+  Service,
+  ServiceInstance,
 } from "./types.ts";
 
 /**
@@ -50,7 +50,7 @@ export class ComposeOrchestrator {
    */
   async up(
     composeFile: ComposeFile,
-    options: { detach?: boolean; build?: boolean; forceRecreate?: boolean } = {}
+    _options: { detach?: boolean; build?: boolean; forceRecreate?: boolean } = {},
   ): Promise<ComposeResult> {
     const startTime = Date.now();
     const projectName = composeFile.name!;
@@ -128,7 +128,7 @@ export class ComposeOrchestrator {
             containerName,
             service,
             projectName,
-            createdNetworks
+            createdNetworks,
           );
 
           instance.containerId = containerId;
@@ -189,7 +189,7 @@ export class ComposeOrchestrator {
    */
   async down(
     projectName: string,
-    options: { removeVolumes?: boolean; removeOrphans?: boolean } = {}
+    options: { removeVolumes?: boolean; removeOrphans?: boolean } = {},
   ): Promise<ComposeResult> {
     const startTime = Date.now();
     const results: ComposeResult["services"] = [];
@@ -258,7 +258,7 @@ export class ComposeOrchestrator {
   /**
    * List running services in a project
    */
-  async ps(projectName?: string): Promise<ProjectState[]> {
+  ps(projectName?: string): ProjectState[] {
     if (projectName) {
       const project = this.projects.get(projectName);
       return project ? [project] : [];
@@ -289,23 +289,24 @@ export class ComposeOrchestrator {
   /**
    * Scale a service
    */
-  async scale(
+  scale(
     projectName: string,
     serviceName: string,
-    replicas: number
+    replicas: number,
   ): Promise<void> {
     // Note: Full implementation would track multiple containers per service
     console.log(`Scaling ${projectName}/${serviceName} to ${replicas} replicas`);
     // TODO: Implement replica management
+    return Promise.resolve();
   }
 
   /**
    * Get logs from services
    */
-  async logs(
+  logs(
     projectName: string,
-    options: { services?: string[]; follow?: boolean; tail?: number } = {}
-  ): Promise<AsyncIterable<string>> {
+    options: { services?: string[]; follow?: boolean; tail?: number } = {},
+  ): AsyncIterable<string> {
     const project = this.projects.get(projectName);
     if (!project) {
       throw new Error(`Project not found: ${projectName}`);
@@ -313,23 +314,24 @@ export class ComposeOrchestrator {
 
     const targetServices = options.services || Object.keys(project.services);
 
-    // Return combined log stream
-    async function* generateLogs(orchestrator: ComposeOrchestrator) {
-      for (const name of targetServices) {
-        const instance = project!.services[name];
-        if (instance?.containerId) {
-          const logs = await orchestrator.getContainerLogs(
-            instance.containerId,
-            options.tail
-          );
-          for (const line of logs.split("\n")) {
-            yield `${name} | ${line}`;
-          }
+    // Return combined log stream using bound method
+    return this.generateLogs(project, targetServices, options.tail);
+  }
+
+  private async *generateLogs(
+    project: ProjectState,
+    targetServices: string[],
+    tail?: number,
+  ): AsyncIterable<string> {
+    for (const name of targetServices) {
+      const instance = project.services[name];
+      if (instance?.containerId) {
+        const logs = await this.getContainerLogs(instance.containerId, tail);
+        for (const line of logs.split("\n")) {
+          yield `${name} | ${line}`;
         }
       }
     }
-
-    return generateLogs(this);
   }
 
   // --- Private helper methods ---
@@ -381,16 +383,16 @@ export class ComposeOrchestrator {
 
   private async waitForDependencies(
     service: Service,
-    project: ProjectState
+    project: ProjectState,
   ): Promise<void> {
     if (!service.depends_on) return;
 
     const deps = Array.isArray(service.depends_on)
       ? service.depends_on.map((d) => ({ name: d, condition: "service_started" as const }))
       : Object.entries(service.depends_on).map(([name, config]) => ({
-          name,
-          condition: (config as DependsOnConfig).condition,
-        }));
+        name,
+        condition: (config as DependsOnConfig).condition,
+      }));
 
     for (const dep of deps) {
       const instance = project.services[dep.name];
@@ -419,7 +421,7 @@ export class ComposeOrchestrator {
 
   private async waitForHealthy(
     containerId?: string,
-    timeout = 60000
+    timeout = 60000,
   ): Promise<void> {
     if (!containerId) return;
 
@@ -435,12 +437,13 @@ export class ComposeOrchestrator {
     throw new Error("Timeout waiting for container to become healthy");
   }
 
-  private async waitForExit(
+  private waitForExit(
     containerId?: string,
-    expectedCode = 0
+    _expectedCode = 0,
   ): Promise<void> {
-    if (!containerId) return;
+    if (!containerId) return Promise.resolve();
     // TODO: Implement wait for container exit
+    return Promise.resolve();
   }
 
   private parsePortMappings(ports: (string | PortConfig)[]): PortMapping[] {
@@ -468,7 +471,7 @@ export class ComposeOrchestrator {
   private async callSvalinn(
     method: string,
     path: string,
-    body?: unknown
+    body?: unknown,
   ): Promise<unknown> {
     const response = await fetch(`${this.svalinnEndpoint}${path}`, {
       method,
@@ -496,7 +499,7 @@ export class ComposeOrchestrator {
     name: string,
     service: Service,
     projectName: string,
-    networks: string[]
+    _networks: string[],
   ): Promise<string> {
     const result = (await this.callSvalinn("POST", "/v1/run", {
       imageName: service.image,
@@ -519,7 +522,7 @@ export class ComposeOrchestrator {
   }
 
   private normalizeEnv(
-    env?: Record<string, string> | string[]
+    env?: Record<string, string> | string[],
   ): Record<string, string> {
     if (!env) return {};
     if (Array.isArray(env)) {
@@ -543,11 +546,11 @@ export class ComposeOrchestrator {
 
   private async getContainerLogs(
     containerId: string,
-    tail?: number
+    tail?: number,
   ): Promise<string> {
     const result = (await this.callSvalinn(
       "GET",
-      `/v1/containers/${containerId}/logs${tail ? `?tail=${tail}` : ""}`
+      `/v1/containers/${containerId}/logs${tail ? `?tail=${tail}` : ""}`,
     )) as { logs: string };
     return result.logs || "";
   }
@@ -555,26 +558,30 @@ export class ComposeOrchestrator {
   private async getContainerHealth(containerId: string): Promise<string> {
     const result = (await this.callSvalinn(
       "GET",
-      `/v1/containers/${containerId}`
+      `/v1/containers/${containerId}`,
     )) as { health?: string };
     return result.health || "none";
   }
 
-  private async createNetwork(name: string): Promise<void> {
+  private createNetwork(name: string): Promise<void> {
     // TODO: Implement via Vörðr when network API is ready
     console.log(`    (network creation deferred: ${name})`);
+    return Promise.resolve();
   }
 
-  private async removeNetwork(name: string): Promise<void> {
+  private removeNetwork(_name: string): Promise<void> {
     // TODO: Implement via Vörðr
+    return Promise.resolve();
   }
 
-  private async createVolume(name: string): Promise<void> {
+  private createVolume(name: string): Promise<void> {
     // TODO: Implement via Vörðr when volume API is ready
     console.log(`    (volume creation deferred: ${name})`);
+    return Promise.resolve();
   }
 
-  private async removeVolume(name: string): Promise<void> {
+  private removeVolume(_name: string): Promise<void> {
     // TODO: Implement via Vörðr
+    return Promise.resolve();
   }
 }

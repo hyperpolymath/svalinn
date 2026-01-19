@@ -3,8 +3,8 @@
 
 import { assertEquals, assertExists } from "jsr:@std/assert@1";
 import { evaluate } from "../policy/evaluator.ts";
-import { strictPolicy, standardPolicy, permissivePolicy } from "../policy/defaults.ts";
-import type { ContainerRequest, AttestationContext } from "../policy/types.ts";
+import { permissivePolicy, standardPolicy, strictPolicy } from "../policy/defaults.ts";
+import type { AttestationContext, ContainerRequest } from "../policy/types.ts";
 
 /**
  * Generate a valid attestation context that passes strict policy verification

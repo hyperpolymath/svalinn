@@ -2,26 +2,10 @@
 // Authentication tests
 
 import { assertEquals, assertExists } from "jsr:@std/assert@1";
-import type {
-  AuthConfig,
-  OIDCConfig,
-  ApiKeyInfo,
-  TokenPayload,
-  Role,
-} from "../auth/types.ts";
-import {
-  authMiddleware,
-  createAuthConfig,
-  requireScopes,
-  requireGroups,
-} from "../auth/middleware.ts";
+import type { ApiKeyInfo, OIDCConfig, Role, TokenPayload } from "../auth/types.ts";
+import { createAuthConfig } from "../auth/middleware.ts";
 import { decodeJWT, discoverOIDC } from "../auth/jwt.ts";
-import {
-  getAuthorizationUrl,
-  generateState,
-  generateNonce,
-  clientCredentials,
-} from "../auth/oauth2.ts";
+import { generateNonce, generateState, getAuthorizationUrl } from "../auth/oauth2.ts";
 import { defaultRoles, defaultScopes } from "../auth/types.ts";
 
 // === Type Tests ===
@@ -77,7 +61,7 @@ Deno.test("decodeJWT parses valid JWT", () => {
       aud: "svalinn",
       exp: Math.floor(Date.now() / 1000) + 3600,
       iat: Math.floor(Date.now() / 1000),
-    })
+    }),
   );
   const signature = "test-signature";
   const token = `${header}.${payload}.${signature}`;
@@ -312,11 +296,9 @@ Deno.test("admin scope grants all permissions", () => {
   const userScopes = ["svalinn:admin"];
 
   // Check if admin or specific scope
-  const canRead =
-    userScopes.includes("svalinn:read") ||
+  const canRead = userScopes.includes("svalinn:read") ||
     userScopes.includes("svalinn:admin");
-  const canWrite =
-    userScopes.includes("svalinn:write") ||
+  const canWrite = userScopes.includes("svalinn:write") ||
     userScopes.includes("svalinn:admin");
 
   assertEquals(canRead, true);

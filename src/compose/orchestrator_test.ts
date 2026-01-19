@@ -5,7 +5,7 @@ import { assertEquals, assertThrows } from "jsr:@std/assert@^1";
 import { ComposeOrchestrator } from "./orchestrator.ts";
 import type { ComposeFile } from "./types.ts";
 
-Deno.test("ComposeOrchestrator - resolves simple dependencies", async () => {
+Deno.test("ComposeOrchestrator - resolves simple dependencies", () => {
   const orchestrator = new ComposeOrchestrator();
 
   const composeFile: ComposeFile = {
@@ -40,11 +40,11 @@ Deno.test("ComposeOrchestrator - detects circular dependencies", () => {
     // @ts-ignore: accessing private method for testing
     () => orchestrator.resolveStartupOrder(services),
     Error,
-    "Circular dependency"
+    "Circular dependency",
   );
 });
 
-Deno.test("ComposeOrchestrator - resolves complex dependency graph", async () => {
+Deno.test("ComposeOrchestrator - resolves complex dependency graph", () => {
   const orchestrator = new ComposeOrchestrator();
 
   const composeFile: ComposeFile = {
