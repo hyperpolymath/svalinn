@@ -4,8 +4,14 @@
 import { Hono } from "@hono/hono";
 import { cors } from "@hono/hono/cors";
 import { logger } from "@hono/hono/logger";
-import Ajv from "ajv";
-import addFormats from "ajv-formats";
+import AjvModule from "ajv";
+import addFormatsModule from "ajv-formats";
+
+// Handle ESM/CJS default export differences
+// deno-lint-ignore no-explicit-any
+const Ajv = (AjvModule as any).default || AjvModule;
+// deno-lint-ignore no-explicit-any
+const addFormats = (addFormatsModule as any).default || addFormatsModule;
 
 // Configuration
 const config = {
