@@ -4,13 +4,52 @@
 import { assertEquals, assertExists } from "jsr:@std/assert@1";
 import { evaluate } from "../policy/evaluator.ts";
 import { strictPolicy, standardPolicy, permissivePolicy } from "../policy/defaults.ts";
-import type { ContainerRequest } from "../policy/types.ts";
+import type { ContainerRequest, AttestationContext } from "../policy/types.ts";
+
+/**
+ * Generate a valid attestation context that passes strict policy verification
+ */
+function createValidStrictAttestation(): AttestationContext {
+  const signedAt = new Date();
+  signedAt.setDate(signedAt.getDate() - 5); // 5 days ago (within 90 day limit)
+
+  return {
+    signatureAlgorithm: "ed25519",
+    transparencyLogEntries: [{ log: "rekor", entryId: "abc123" }],
+    hasSbom: true,
+    sbomFormat: "spdx",
+    slsaLevel: 3,
+    signedAt: signedAt.toISOString(),
+    keyTrustLevel: "trusted-keyring",
+    predicateTypes: [
+      "https://slsa.dev/provenance/v1",
+      "https://spdx.dev/Document",
+    ],
+  };
+}
+
+/**
+ * Generate a valid attestation context that passes standard policy verification
+ */
+function createValidStandardAttestation(): AttestationContext {
+  const signedAt = new Date();
+  signedAt.setDate(signedAt.getDate() - 30); // 30 days ago (within 180 day limit)
+
+  return {
+    signatureAlgorithm: "ed25519",
+    transparencyLogEntries: [{ log: "rekor", entryId: "abc123" }],
+    slsaLevel: 2,
+    signedAt: signedAt.toISOString(),
+    keyTrustLevel: "organization",
+  };
+}
 
 // === Strict Policy Tests ===
 
 Deno.test("strict policy allows docker.io images", () => {
   const request: ContainerRequest = {
     image: "docker.io/library/alpine:3.18",
+    attestation: createValidStrictAttestation(),
   };
   const result = evaluate(strictPolicy, request);
   assertEquals(result.allowed, true);
@@ -94,6 +133,7 @@ Deno.test("strict policy denies SSH port", () => {
 Deno.test("standard policy allows latest tag", () => {
   const request: ContainerRequest = {
     image: "alpine:latest",
+    attestation: createValidStandardAttestation(),
   };
   const result = evaluate(standardPolicy, request);
   assertEquals(result.allowed, true);
@@ -103,6 +143,7 @@ Deno.test("standard policy allows more memory", () => {
   const request: ContainerRequest = {
     image: "alpine:3.18",
     memory: 4096,
+    attestation: createValidStandardAttestation(),
   };
   const result = evaluate(standardPolicy, request);
   assertEquals(result.allowed, true);
@@ -112,6 +153,7 @@ Deno.test("standard policy still denies privileged", () => {
   const request: ContainerRequest = {
     image: "alpine:3.18",
     privileged: true,
+    attestation: createValidStandardAttestation(),
   };
   const result = evaluate(standardPolicy, request);
   assertEquals(result.allowed, false);
@@ -178,6 +220,7 @@ Deno.test("violation has required fields", () => {
 Deno.test("extracts docker.io from short image name", () => {
   const request: ContainerRequest = {
     image: "alpine:3.18",
+    attestation: createValidStrictAttestation(),
   };
   const result = evaluate(strictPolicy, request);
   assertEquals(result.allowed, true);
@@ -186,6 +229,7 @@ Deno.test("extracts docker.io from short image name", () => {
 Deno.test("extracts docker.io from namespaced image", () => {
   const request: ContainerRequest = {
     image: "library/alpine:3.18",
+    attestation: createValidStrictAttestation(),
   };
   const result = evaluate(strictPolicy, request);
   assertEquals(result.allowed, true);
@@ -194,6 +238,7 @@ Deno.test("extracts docker.io from namespaced image", () => {
 Deno.test("extracts ghcr.io from full path", () => {
   const request: ContainerRequest = {
     image: "ghcr.io/myorg/myapp:v1.0.0",
+    attestation: createValidStrictAttestation(),
   };
   const result = evaluate(strictPolicy, request);
   assertEquals(result.allowed, true);

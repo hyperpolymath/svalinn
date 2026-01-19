@@ -49,6 +49,22 @@ export const strictPolicy: EdgePolicy = {
     deniedPorts: [22, 23, 3389],
     deniedHosts: ["*.internal", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
   },
+  verification: {
+    signatureAlgorithms: ["ed25519", "ml-dsa-87"],
+    transparencyLogs: {
+      required: ["rekor", "sigstore"],
+      quorum: 1,
+    },
+    sbomRequired: true,
+    sbomFormats: ["spdx", "cyclonedx"],
+    provenanceLevel: 3,
+    maxSignatureAgeDays: 90,
+    keyTrustLevel: "trusted-keyring",
+    requiredPredicates: [
+      "https://slsa.dev/provenance/v1",
+      "https://spdx.dev/Document",
+    ],
+  },
 };
 
 /**
@@ -94,6 +110,17 @@ export const standardPolicy: EdgePolicy = {
     allowIngress: true,
     allowedPorts: [],
     deniedPorts: [],
+  },
+  verification: {
+    signatureAlgorithms: ["ed25519", "ecdsa-p256", "rsa-4096", "ml-dsa-65", "ml-dsa-87"],
+    transparencyLogs: {
+      required: ["rekor"],
+      quorum: 1,
+    },
+    sbomRequired: false,
+    provenanceLevel: 2,
+    maxSignatureAgeDays: 180,
+    keyTrustLevel: "organization",
   },
 };
 

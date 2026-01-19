@@ -2,6 +2,102 @@
 // Policy DSL types for Svalinn
 
 /**
+ * Supported signature algorithms for verification
+ */
+export type SignatureAlgorithm =
+  | "ed25519"
+  | "ecdsa-p256"
+  | "ecdsa-p384"
+  | "rsa-2048"
+  | "rsa-4096"
+  | "ml-dsa-44"
+  | "ml-dsa-65"
+  | "ml-dsa-87"
+  | "ct-sig-02"
+  | "slh-dsa-shake-128f"
+  | "slh-dsa-shake-256f";
+
+/**
+ * Supported transparency logs
+ */
+export type TransparencyLog =
+  | "rekor"
+  | "ct-tlog"
+  | "sigstore"
+  | "trillian"
+  | "arweave"
+  | "custom";
+
+/**
+ * SLSA provenance levels (1-4)
+ */
+export type SlsaLevel = 1 | 2 | 3 | 4;
+
+/**
+ * Key trust levels for verification
+ */
+export type KeyTrustLevel =
+  | "untrusted"
+  | "self-signed"
+  | "organization"
+  | "trusted-keyring"
+  | "hardware-backed"
+  | "fulcio-verified";
+
+/**
+ * Verification rules for cryptographic attestations
+ */
+export interface VerificationRules {
+  /**
+   * Required signature algorithms - at least one must match
+   */
+  signatureAlgorithms?: SignatureAlgorithm[];
+
+  /**
+   * Required transparency logs - entries must exist in all specified logs
+   */
+  transparencyLogs?: {
+    required: TransparencyLog[];
+    quorum?: number; // Minimum logs that must contain the entry
+  };
+
+  /**
+   * Require SBOM attestation to be present
+   */
+  sbomRequired?: boolean;
+
+  /**
+   * Accepted SBOM formats when sbomRequired is true
+   */
+  sbomFormats?: ("spdx" | "cyclonedx" | "syft")[];
+
+  /**
+   * Minimum required SLSA provenance level
+   */
+  provenanceLevel?: SlsaLevel;
+
+  /**
+   * Maximum age of signature in days
+   */
+  maxSignatureAgeDays?: number;
+
+  /**
+   * Minimum required key trust level
+   */
+  keyTrustLevel?: KeyTrustLevel;
+
+  /**
+   * Allowed key IDs (SHA256 fingerprints)
+   */
+  allowedKeyIds?: string[];
+
+  /**
+   * Required predicate types (URIs)
+   */
+  requiredPredicates?: string[];
+}
+
+/**
  * Registry rules control which container registries are allowed
  */
 export interface RegistryRules {
@@ -76,6 +172,7 @@ export interface EdgePolicy {
   resources: ResourceRules;
   security: SecurityRules;
   network?: NetworkRules;
+  verification?: VerificationRules;
 }
 
 /**
@@ -101,6 +198,60 @@ export interface PolicyResult {
 }
 
 /**
+ * Attestation context for verification
+ */
+export interface AttestationContext {
+  /**
+   * Signature algorithm used
+   */
+  signatureAlgorithm?: SignatureAlgorithm;
+
+  /**
+   * Transparency log entries
+   */
+  transparencyLogEntries?: {
+    log: TransparencyLog;
+    entryId?: string;
+    timestamp?: string;
+  }[];
+
+  /**
+   * Whether SBOM attestation is present
+   */
+  hasSbom?: boolean;
+
+  /**
+   * SBOM format if present
+   */
+  sbomFormat?: "spdx" | "cyclonedx" | "syft";
+
+  /**
+   * SLSA provenance level achieved
+   */
+  slsaLevel?: SlsaLevel;
+
+  /**
+   * Signature timestamp (ISO 8601)
+   */
+  signedAt?: string;
+
+  /**
+   * Key trust level of the signer
+   */
+  keyTrustLevel?: KeyTrustLevel;
+
+  /**
+   * Key ID (SHA256 fingerprint) of the signer
+   */
+  keyId?: string;
+
+  /**
+   * Predicate types present in attestation bundle
+   */
+  predicateTypes?: string[];
+}
+
+/**
  * Container request for policy evaluation
  */
 export interface ContainerRequest {
@@ -120,4 +271,5 @@ export interface ContainerRequest {
   };
   ports?: number[];
   env?: Record<string, string>;
+  attestation?: AttestationContext;
 }

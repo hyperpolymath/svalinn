@@ -2,11 +2,34 @@
 // Policy evaluator for Svalinn
 
 import type {
-  EdgePolicy,
   ContainerRequest,
+  EdgePolicy,
+  KeyTrustLevel,
   PolicyResult,
   PolicyViolation,
 } from "./types.ts";
+
+/**
+ * Key trust level hierarchy (higher index = more trusted)
+ */
+const KEY_TRUST_HIERARCHY: KeyTrustLevel[] = [
+  "untrusted",
+  "self-signed",
+  "organization",
+  "trusted-keyring",
+  "hardware-backed",
+  "fulcio-verified",
+];
+
+/**
+ * Compare key trust levels
+ * Returns true if actual level meets or exceeds required level
+ */
+function meetsKeyTrustLevel(actual: KeyTrustLevel, required: KeyTrustLevel): boolean {
+  const actualIndex = KEY_TRUST_HIERARCHY.indexOf(actual);
+  const requiredIndex = KEY_TRUST_HIERARCHY.indexOf(required);
+  return actualIndex >= requiredIndex;
+}
 
 /**
  * Match a string against a glob pattern
@@ -47,7 +70,7 @@ function extractRegistry(image: string): string {
  */
 export function evaluate(
   policy: EdgePolicy,
-  request: ContainerRequest
+  request: ContainerRequest,
 ): PolicyResult {
   const violations: PolicyViolation[] = [];
   const registry = request.registry || extractRegistry(request.image);
@@ -167,7 +190,7 @@ export function evaluate(
   // Check capabilities
   if (request.capabilities?.add) {
     const forbidden = request.capabilities.add.filter(
-      (cap) => !policy.security.addCapabilities.includes(cap)
+      (cap) => !policy.security.addCapabilities.includes(cap),
     );
     if (forbidden.length > 0) {
       violations.push({
@@ -222,6 +245,224 @@ export function evaluate(
     }
   }
 
+  // === Verification Rules ===
+
+  if (policy.verification) {
+    const verificationRules = policy.verification;
+    const attestation = request.attestation;
+
+    // Check signature algorithm requirement
+    if (verificationRules.signatureAlgorithms && verificationRules.signatureAlgorithms.length > 0) {
+      if (!attestation?.signatureAlgorithm) {
+        violations.push({
+          rule: "verification.signatureAlgorithms",
+          severity: "critical",
+          message: "Signature algorithm information is required but not provided",
+          field: "attestation.signatureAlgorithm",
+          expected: verificationRules.signatureAlgorithms,
+        });
+      } else if (!verificationRules.signatureAlgorithms.includes(attestation.signatureAlgorithm)) {
+        violations.push({
+          rule: "verification.signatureAlgorithms",
+          severity: "critical",
+          message:
+            `Signature algorithm '${attestation.signatureAlgorithm}' is not in the allowed list`,
+          field: "attestation.signatureAlgorithm",
+          actual: attestation.signatureAlgorithm,
+          expected: verificationRules.signatureAlgorithms,
+        });
+      }
+    }
+
+    // Check transparency log requirements
+    if (verificationRules.transparencyLogs) {
+      const requiredLogs = verificationRules.transparencyLogs.required;
+      const quorum = verificationRules.transparencyLogs.quorum || requiredLogs.length;
+
+      if (!attestation?.transparencyLogEntries || attestation.transparencyLogEntries.length === 0) {
+        violations.push({
+          rule: "verification.transparencyLogs",
+          severity: "critical",
+          message: "Transparency log entries are required but not provided",
+          field: "attestation.transparencyLogEntries",
+          expected: requiredLogs,
+        });
+      } else {
+        const presentLogs = attestation.transparencyLogEntries.map((entry) => entry.log);
+        const matchingLogs = requiredLogs.filter((log) => presentLogs.includes(log));
+
+        if (matchingLogs.length < quorum) {
+          violations.push({
+            rule: "verification.transparencyLogs",
+            severity: "critical",
+            message:
+              `Transparency log quorum not met: ${matchingLogs.length}/${quorum} required logs present`,
+            field: "attestation.transparencyLogEntries",
+            actual: presentLogs,
+            expected: { required: requiredLogs, quorum },
+          });
+        }
+      }
+    }
+
+    // Check SBOM requirement
+    if (verificationRules.sbomRequired) {
+      if (!attestation?.hasSbom) {
+        violations.push({
+          rule: "verification.sbomRequired",
+          severity: "high",
+          message: "SBOM attestation is required but not present",
+          field: "attestation.hasSbom",
+          actual: false,
+          expected: true,
+        });
+      } else if (
+        verificationRules.sbomFormats &&
+        verificationRules.sbomFormats.length > 0 &&
+        attestation.sbomFormat &&
+        !verificationRules.sbomFormats.includes(attestation.sbomFormat)
+      ) {
+        violations.push({
+          rule: "verification.sbomFormats",
+          severity: "high",
+          message: `SBOM format '${attestation.sbomFormat}' is not in the allowed list`,
+          field: "attestation.sbomFormat",
+          actual: attestation.sbomFormat,
+          expected: verificationRules.sbomFormats,
+        });
+      }
+    }
+
+    // Check SLSA provenance level
+    if (verificationRules.provenanceLevel) {
+      if (!attestation?.slsaLevel) {
+        violations.push({
+          rule: "verification.provenanceLevel",
+          severity: "critical",
+          message:
+            `SLSA provenance level ${verificationRules.provenanceLevel} is required but not provided`,
+          field: "attestation.slsaLevel",
+          expected: verificationRules.provenanceLevel,
+        });
+      } else if (attestation.slsaLevel < verificationRules.provenanceLevel) {
+        violations.push({
+          rule: "verification.provenanceLevel",
+          severity: "critical",
+          message:
+            `SLSA level ${attestation.slsaLevel} does not meet required level ${verificationRules.provenanceLevel}`,
+          field: "attestation.slsaLevel",
+          actual: attestation.slsaLevel,
+          expected: verificationRules.provenanceLevel,
+        });
+      }
+    }
+
+    // Check signature age
+    if (verificationRules.maxSignatureAgeDays) {
+      if (!attestation?.signedAt) {
+        violations.push({
+          rule: "verification.maxSignatureAgeDays",
+          severity: "high",
+          message: "Signature timestamp is required but not provided",
+          field: "attestation.signedAt",
+          expected: `Signature within ${verificationRules.maxSignatureAgeDays} days`,
+        });
+      } else {
+        const signedDate = new Date(attestation.signedAt);
+        const now = new Date();
+        const ageInDays = Math.floor(
+          (now.getTime() - signedDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+
+        if (ageInDays > verificationRules.maxSignatureAgeDays) {
+          violations.push({
+            rule: "verification.maxSignatureAgeDays",
+            severity: "high",
+            message:
+              `Signature is ${ageInDays} days old, exceeds maximum age of ${verificationRules.maxSignatureAgeDays} days`,
+            field: "attestation.signedAt",
+            actual: ageInDays,
+            expected: verificationRules.maxSignatureAgeDays,
+          });
+        }
+      }
+    }
+
+    // Check key trust level
+    if (verificationRules.keyTrustLevel) {
+      if (!attestation?.keyTrustLevel) {
+        violations.push({
+          rule: "verification.keyTrustLevel",
+          severity: "critical",
+          message:
+            `Key trust level '${verificationRules.keyTrustLevel}' is required but not provided`,
+          field: "attestation.keyTrustLevel",
+          expected: verificationRules.keyTrustLevel,
+        });
+      } else if (!meetsKeyTrustLevel(attestation.keyTrustLevel, verificationRules.keyTrustLevel)) {
+        violations.push({
+          rule: "verification.keyTrustLevel",
+          severity: "critical",
+          message:
+            `Key trust level '${attestation.keyTrustLevel}' does not meet required level '${verificationRules.keyTrustLevel}'`,
+          field: "attestation.keyTrustLevel",
+          actual: attestation.keyTrustLevel,
+          expected: verificationRules.keyTrustLevel,
+        });
+      }
+    }
+
+    // Check allowed key IDs
+    if (verificationRules.allowedKeyIds && verificationRules.allowedKeyIds.length > 0) {
+      if (!attestation?.keyId) {
+        violations.push({
+          rule: "verification.allowedKeyIds",
+          severity: "critical",
+          message: "Key ID is required but not provided",
+          field: "attestation.keyId",
+          expected: verificationRules.allowedKeyIds,
+        });
+      } else if (!verificationRules.allowedKeyIds.includes(attestation.keyId)) {
+        violations.push({
+          rule: "verification.allowedKeyIds",
+          severity: "critical",
+          message: `Key ID '${attestation.keyId}' is not in the allowed list`,
+          field: "attestation.keyId",
+          actual: attestation.keyId,
+          expected: verificationRules.allowedKeyIds,
+        });
+      }
+    }
+
+    // Check required predicates
+    if (verificationRules.requiredPredicates && verificationRules.requiredPredicates.length > 0) {
+      if (!attestation?.predicateTypes || attestation.predicateTypes.length === 0) {
+        violations.push({
+          rule: "verification.requiredPredicates",
+          severity: "critical",
+          message: "Required predicate types are missing from attestation",
+          field: "attestation.predicateTypes",
+          expected: verificationRules.requiredPredicates,
+        });
+      } else {
+        const missingPredicates = verificationRules.requiredPredicates.filter(
+          (predicate) => !attestation.predicateTypes!.includes(predicate),
+        );
+
+        if (missingPredicates.length > 0) {
+          violations.push({
+            rule: "verification.requiredPredicates",
+            severity: "critical",
+            message: `Missing required predicate types: ${missingPredicates.join(", ")}`,
+            field: "attestation.predicateTypes",
+            actual: attestation.predicateTypes,
+            expected: verificationRules.requiredPredicates,
+          });
+        }
+      }
+    }
+  }
+
   // Determine if allowed based on violations
   const hasCritical = violations.some((v) => v.severity === "critical");
   const hasHigh = violations.some((v) => v.severity === "high");
@@ -239,7 +480,7 @@ export function evaluate(
  */
 export function evaluateMultiple(
   policies: EdgePolicy[],
-  request: ContainerRequest
+  request: ContainerRequest,
 ): PolicyResult {
   for (const policy of policies) {
     const result = evaluate(policy, request);
