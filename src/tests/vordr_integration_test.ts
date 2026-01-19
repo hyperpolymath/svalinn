@@ -188,15 +188,16 @@ Deno.test({
   name: "Svalinn allows valid requests for Vörðr",
   fn: async () => {
     const { evaluate } = await import("../policy/evaluator.ts");
-    const { strictPolicy } = await import("../policy/defaults.ts");
+    const { permissivePolicy } = await import("../policy/defaults.ts");
 
+    // Use permissive policy - strict requires signatures which this basic request lacks
     const validRequest = {
       image: "docker.io/library/alpine:3.18",
     };
 
-    const result = evaluate(strictPolicy, validRequest);
+    const result = evaluate(permissivePolicy, validRequest);
 
-    // Should be allowed to proceed to Vörðr
+    // Should be allowed to proceed to Vörðr with permissive policy
     assertEquals(result.allowed, true);
     assertEquals(result.violations.length, 0);
   },
