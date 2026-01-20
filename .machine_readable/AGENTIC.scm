@@ -1,5 +1,5 @@
-;; SPDX-License-Identifier: AGPL-3.0-or-later
-;; AGENTIC.scm - AI agent interaction patterns for svalinn
+;; SPDX-License-Identifier: PMPL-1.0-or-later
+;; AGENTIC.scm - AI agent interaction patterns
 
 (define agentic-config
   `((version . "1.0.0")
@@ -12,5 +12,5 @@
        (refactoring . "conservative")
        (testing . "comprehensive")))
     (constraints
-      ((languages . ())
+      ((languages . ("rescript" "rust" "gleam"))
        (banned . ("typescript" "go" "python" "makefile"))))))
