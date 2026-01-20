@@ -1,17 +1,14 @@
-;; SPDX-License-Identifier: AGPL-3.0-or-later
-;; META.scm - Meta-level information for svalinn
-;; Media-Type: application/meta+scheme
+;; SPDX-License-Identifier: PMPL-1.0-or-later
+;; META.scm - Project metadata and architectural decisions
 
-(meta
-  (architecture-decisions ())
-
-  (development-practices
-    (code-style ())
-    (security
-      (principle "Defense in depth"))
-    (testing ())
-    (versioning "SemVer")
-    (documentation "AsciiDoc")
-    (branching "main for stable"))
-
-  (design-rationale ()))
+(define project-meta
+  `((version . "1.0.0")
+    (architecture-decisions . ())
+    (development-practices
+      ((code-style . "rescript")
+       (security . "openssf-scorecard")
+       (testing . "property-based")
+       (versioning . "semver")
+       (documentation . "asciidoc")
+       (branching . "trunk-based")))
+    (design-rationale . ())))
