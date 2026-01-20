@@ -1,273 +1,256 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// Svalinn Gateway - Main Entry Point
+// Svalinn Gateway - Main Entry Point in ReScript
 
-import { Hono } from "@hono/hono";
-import { cors } from "@hono/hono/cors";
-import { logger } from "@hono/hono/logger";
-import AjvModule from "ajv";
-import addFormatsModule from "ajv-formats";
+module Ajv = {
+  @val external make: (~allErrors: bool) => {..} = "Ajv"
+  @send external addSchema: ({..}, string, 'a) => unit = "addSchema"
+  @send external getSchema: ({..}, string) => option<{..}> = "getSchema"
+  @send external validate: ({..}, 'a) => bool = "validate"
+  @get external errors: option<array<{message: string}>> = "errors"
+}
 
-// Handle ESM/CJS default export differences
-// deno-lint-ignore no-explicit-any
-const Ajv = (AjvModule as any).default || AjvModule;
-// deno-lint-ignore no-explicit-any
-const addFormats = (addFormatsModule as any).default || addFormatsModule;
+module AjvFormats = {
+  @val external default: {..} => unit = "default"
+}
 
-// Configuration
-const config = {
-  port: parseInt(Deno.env.get("SVALINN_PORT") || "8000"),
-  host: Deno.env.get("SVALINN_HOST") || "0.0.0.0",
-  vordrEndpoint: Deno.env.get("VORDR_ENDPOINT") || "http://localhost:8080",
-  specVersion: Deno.env.get("SPEC_VERSION") || "v0.1.0",
-};
+module Config = {
+  let port = Belt.Int.fromString(Deno.env.get("SVALINN_PORT")->Belt.Option.getWithDefault("8000"))
+  let host = Deno.env.get("SVALINN_HOST")->Belt.Option.getWithDefault("0.0.0.0")
+  let vordrEndpoint = Deno.env.get("VORDR_ENDPOINT")->Belt.Option.getWithDefault("http://localhost:8080")
+  let specVersion = Deno.env.get("SPEC_VERSION")->Belt.Option.getWithDefault("v0.1.0")
+}
 
-// JSON Schema validator
-const ajv = new Ajv({ allErrors: true });
-addFormats(ajv);
+module Schema = {
+  type t
+  let schemas: Belt.Map.String.t<t> = Belt.Map.String.make()
 
-// Load schemas
-const schemaDir = new URL("../spec/schemas/", import.meta.url);
-const schemas: Record<string, unknown> = {};
+  let loadSchemas = async (_) => {
+    let schemaFiles = [
+      "gateway-run-request.v1.json",
+      "gateway-verify-request.v1.json",
+      "container-info.v1.json",
+      "error-response.v1.json",
+    ]
 
-async function loadSchemas() {
-  const schemaFiles = [
-    "gateway-run-request.v1.json",
-    "gateway-verify-request.v1.json",
-    "container-info.v1.json",
-    "error-response.v1.json",
-  ];
-
-  for (const file of schemaFiles) {
-    try {
-      const schemaPath = new URL(file, schemaDir);
-      const schema = JSON.parse(await Deno.readTextFile(schemaPath));
-      schemas[file] = schema;
-      ajv.addSchema(schema, file);
-    } catch {
-      console.warn(`Warning: Could not load schema ${file}`);
+    for file in schemaFiles {
+      try {
+        let schemaPath = "../spec/schemas/" ++ file
+        let schema = JSON.parse(await Deno.readTextFile(schemaPath))
+        schemas->Belt.Map.String.set(file, schema)
+        ajv->Ajv.addSchema(schema, file)
+      } catch _ => Js.log2("Warning: Could not load schema", file)
     }
   }
 }
 
-// Validate request against schema
-function validateRequest(
-  schemaName: string,
-  data: unknown,
-): { valid: boolean; errors?: unknown[] } {
-  const validate = ajv.getSchema(schemaName);
-  if (!validate) {
-    return { valid: false, errors: [{ message: `Schema ${schemaName} not found` }] };
+module Vordr = {
+  let call = async (toolName: string, args: 'a) => {
+    let response = await Fetch.fetchWithInit(
+      Config.vordrEndpoint,
+      Fetch.RequestInit.make(
+        ~method_=#POST,
+        ~headers=Fetch.HeadersInit.make({"Content-Type": "application/json"}),
+        ~body=Js.Json.stringify({
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "params": {"name": toolName, "arguments": args},
+          "id": Js.Date.now(),
+        }),
+        (),
+      ),
+    )
+    let result = await response->Fetch.Response.json
+    if Js.Dict.get(result, "error")->Belt.Option.isSome {
+      Belt.Result.Error(Js.Dict.get(result, "error")->Belt.Option.flatMap(error => Js.Dict.get(error, "message")))
+    } else {
+      Belt.Result.Ok(Js.Dict.get(result, "result"))
+    }
   }
-  const valid = validate(data);
-  return { valid: !!valid, errors: validate.errors || undefined };
 }
 
-// Vörðr MCP client
-async function callVordr(toolName: string, args: unknown): Promise<unknown> {
-  const response = await fetch(config.vordrEndpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "tools/call",
-      params: { name: toolName, arguments: args },
-      id: Date.now(),
-    }),
-  });
-
-  const result = await response.json();
-  if (result.error) {
-    throw new Error(result.error.message);
+module Validation = {
+  let validateRequest = (schemaName: string, data: 'a) => {
+    let validate = ajv->Ajv.getSchema(schemaName)
+    switch validate {
+    | None => {valid: false, errors: Some([{"message": "Schema " ++ schemaName ++ " not found"}])}
+    | Some(validate) => {
+      let valid = validate->Ajv.validate(data)
+      {valid, errors: validate->Ajv.errors}
+    }
   }
-  return result.result;
 }
 
-// Create Hono app
-const app = new Hono();
+module HealthCheck = {
+  let handler = async (_req) => {
+    let vordrConnected = try {
+      let _ = await Fetch.fetch(Config.vordrEndpoint ++ "/health")
+      true
+    } catch _ => false
 
-// Middleware
-app.use("*", logger());
-app.use("*", cors());
+    Response.make(
+      ~status=#OK,
+      ~headers=Fetch.HeadersInit.make({"Content-Type": "application/json"}),
+      ~body=Js.Json.stringify({
+        "status": "healthy",
+        "version": "0.1.0",
+        "vordrConnected,
+        "specVersion": Config.specVersion,
+        "timestamp": Js.Date.toISOString(Js.Date.now()),
+      }),
+      (),
+    )
+  }
+}
 
-// Health check
-app.get("/healthz", async (c) => {
-  let vordrConnected = false;
-  try {
-    await fetch(`${config.vordrEndpoint}/health`);
-    vordrConnected = true;
-  } catch {
-    // Vörðr not available
+module Containers = {
+  let list = async (_req) => {
+    let result = await Vordr.call("vordr_container_list", {})
+    switch result {
+    | Belt.Result.Ok(containers) => Response.make(~status=#OK, ~body=Js.Json.stringify({"containers"}), ())
+    | Belt.Result.Error(error) => Response.make(~status=#OK, ~body=Js.Json.stringify({"containers": [], "error"}), ())
+    }
   }
 
-  return c.json({
-    status: "healthy",
-    version: "0.1.0",
-    vordrConnected,
-    specVersion: config.specVersion,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// List containers
-app.get("/v1/containers", async (c) => {
-  try {
-    const result = await callVordr("vordr_container_list", {});
-    return c.json({ containers: result });
-  } catch (e) {
-    return c.json({ containers: [], error: String(e) });
-  }
-});
-
-// Get container info
-app.get("/v1/containers/:id", async (c) => {
-  const id = c.req.param("id");
-  try {
-    const result = await callVordr("vordr_container_inspect", { containerId: id });
-    return c.json(result);
-  } catch (e) {
-    return c.json({ error: String(e) }, 404);
-  }
-});
-
-// Inspect container
-app.get("/v1/containers/:id/inspect", async (c) => {
-  const id = c.req.param("id");
-  try {
-    const result = await callVordr("vordr_container_inspect", { containerId: id });
-    return c.json({ id, data: result });
-  } catch (e) {
-    return c.json({ error: String(e) }, 404);
-  }
-});
-
-// Run container
-app.post("/v1/run", async (c) => {
-  const body = await c.req.json();
-
-  // Validate request
-  const validation = validateRequest("gateway-run-request.v1.json", body);
-  if (!validation.valid) {
-    return c.json(
-      {
-        code: "VALIDATION_ERROR",
-        message: "Request validation failed",
-        details: validation.errors,
-      },
-      400,
-    );
+  let get = async (req) => {
+    let id = req->Request.url->Url.pathname->Js.String.split("/")->Belt.Array.getExn(3)
+    let result = await Vordr.call("vordr_container_inspect", {"containerId": id})
+    switch result {
+    | Belt.Result.Ok(data) => Response.make(~status=#OK, ~body=Js.Json.stringify(data), ())
+    | Belt.Result.Error(error) => Response.make(~status=#NotFound, ~body=Js.Json.stringify({"error"}), ())
+    }
   }
 
-  try {
-    // Create container
-    const createResult = await callVordr("vordr_container_create", {
-      image: body.imageName,
-      name: body.name,
-      config: {
-        privileged: false,
-        readOnlyRoot: true,
-      },
-    });
-
-    // Start container
-    const containerId = (createResult as { containerId: string }).containerId;
-    await callVordr("vordr_container_start", { containerId });
-
-    return c.json({
-      containerId,
-      status: "running",
-      image: body.imageName,
-    });
-  } catch (e) {
-    return c.json(
-      {
-        code: "RUN_ERROR",
-        message: String(e),
-      },
-      500,
-    );
-  }
-});
-
-// Verify image
-app.post("/v1/verify", async (c) => {
-  const body = await c.req.json();
-
-  // Validate request
-  const validation = validateRequest("gateway-verify-request.v1.json", body);
-  if (!validation.valid) {
-    return c.json(
-      {
-        code: "VALIDATION_ERROR",
-        message: "Request validation failed",
-        details: validation.errors,
-      },
-      400,
-    );
+  let inspect = async (req) => {
+    let id = req->Request.url->Url.pathname->Js.String.split("/")->Belt.Array.getExn(3)
+    let result = await Vordr.call("vordr_container_inspect", {"containerId": id})
+    switch result {
+    | Belt.Result.Ok(data) => Response.make(~status=#OK, ~body=Js.Json.stringify({"id", "data"}), ())
+    | Belt.Result.Error(error) => Response.make(~status=#NotFound, ~body=Js.Json.stringify({"error"}), ())
+    }
   }
 
-  try {
-    const result = await callVordr("vordr_verify_image", {
-      image: body.imageRef,
-      checkSbom: body.checkSbom ?? true,
-      checkSignature: body.checkSignature ?? true,
-    });
-    return c.json(result);
-  } catch (e) {
-    return c.json(
-      {
-        code: "VERIFY_ERROR",
-        message: String(e),
-      },
-      500,
-    );
+  let run = async (req) => {
+    let body = await req->Request.json
+    let validation = Validation.validateRequest("gateway-run-request.v1.json", body)
+    if !validation.valid {
+      Response.make(
+        ~status=#BadRequest,
+        ~body=Js.Json.stringify({
+          "code": "VALIDATION_ERROR",
+          "message": "Request validation failed",
+          "details": validation.errors,
+        }),
+        (),
+      )
+    } else {
+      try {
+        let createResult = await Vordr.call("vordr_container_create", {
+          "image": body["imageName"],
+          "name": body["name"],
+          "config": {"privileged": false, "readOnlyRoot": true},
+        })
+        let containerId = createResult["containerId"]
+        let _ = await Vordr.call("vordr_container_start", {"containerId"})
+        Response.make(
+          ~status=#OK,
+          ~body=Js.Json.stringify({"containerId", "status": "running", "image": body["imageName"]}),
+          (),
+        )
+      } catch error => Response.make(~status=#InternalServerError, ~body=Js.Json.stringify({"code": "RUN_ERROR", "message": error}), ())
+    }
   }
-});
 
-// Stop container
-app.post("/v1/containers/:id/stop", async (c) => {
-  const id = c.req.param("id");
-  try {
-    await callVordr("vordr_container_stop", { containerId: id });
-    return c.json({ status: "stopped", containerId: id });
-  } catch (e) {
-    return c.json({ error: String(e) }, 500);
+  let stop = async (req) => {
+    let id = req->Request.url->Url.pathname->Js.String.split("/")->Belt.Array.getExn(3)
+    let result = await Vordr.call("vordr_container_stop", {"containerId": id})
+    switch result {
+    | Belt.Result.Ok(_) => Response.make(~status=#OK, ~body=Js.Json.stringify({"status": "stopped", "containerId": id}), ())
+    | Belt.Result.Error(error) => Response.make(~status=#InternalServerError, ~body=Js.Json.stringify({"error"}), ())
+    }
   }
-});
 
-// Remove container
-app.delete("/v1/containers/:id", async (c) => {
-  const id = c.req.param("id");
-  try {
-    await callVordr("vordr_container_remove", { containerId: id });
-    return c.json({ status: "removed", containerId: id });
-  } catch (e) {
-    return c.json({ error: String(e) }, 500);
+  let remove = async (req) => {
+    let id = req->Request.url->Url.pathname->Js.String.split("/")->Belt.Array.getExn(3)
+    let result = await Vordr.call("vordr_container_remove", {"containerId": id})
+    switch result {
+    | Belt.Result.Ok(_) => Response.make(~status=#OK, ~body=Js.Json.stringify({"status": "removed", "containerId": id}), ())
+    | Belt.Result.Error(error) => Response.make(~status=#InternalServerError, ~body=Js.Json.stringify({"error"}), ())
+    }
   }
-});
+}
 
-// List images
-app.get("/v1/images", async (c) => {
-  try {
-    const result = await callVordr("vordr_image_list", {});
-    return c.json({ images: result });
-  } catch (e) {
-    return c.json({ images: [], error: String(e) });
+module Images = {
+  let list = async (_req) => {
+    let result = await Vordr.call("vordr_image_list", {})
+    switch result {
+    | Belt.Result.Ok(images) => Response.make(~status=#OK, ~body=Js.Json.stringify({"images"}), ())
+    | Belt.Result.Error(error) => Response.make(~status=#OK, ~body=Js.Json.stringify({"images": [], "error"}), ())
+    }
   }
-});
+}
 
-// Start server
-await loadSchemas();
+module Verify = {
+  let handler = async (req) => {
+    let body = await req->Request.json
+    let validation = Validation.validateRequest("gateway-verify-request.v1.json", body)
+    if !validation.valid {
+      Response.make(
+        ~status=#BadRequest,
+        ~body=Js.Json.stringify({
+          "code": "VALIDATION_ERROR",
+          "message": "Request validation failed",
+          "details": validation.errors,
+        }),
+        (),
+      )
+    } else {
+      let result = await Vordr.call("vordr_verify_image", {
+        "image": body["imageRef"],
+        "checkSbom": body["checkSbom"]->Belt.Option.getWithDefault(true),
+        "checkSignature": body["checkSignature"]->Belt.Option.getWithDefault(true),
+      })
+      switch result {
+      | Belt.Result.Ok(data) => Response.make(~status=#OK, ~body=Js.Json.stringify(data), ())
+      | Belt.Result.Error(error) => Response.make(~status=#InternalServerError, ~body=Js.Json.stringify({"code": "VERIFY_ERROR", "message": error}), ())
+      }
+    }
+  }
+}
 
-console.log(`
+module Router = {
+  let app = Router.make()
+
+  // Middleware
+  app->Router.use(Router.Middleware.logger)
+  app->Router.use(Router.Middleware.cors)
+
+  // Routes
+  app->Router.get("/healthz", HealthCheck.handler)
+  app->Router.get("/v1/containers", Containers.list)
+  app->Router.get("/v1/containers/:id", Containers.get)
+  app->Router.get("/v1/containers/:id/inspect", Containers.inspect)
+  app->Router.post("/v1/run", Containers.run)
+  app->Router.post("/v1/verify", Verify.handler)
+  app->Router.post("/v1/containers/:id/stop", Containers.stop)
+  app->Router.delete("/v1/containers/:id", Containers.remove)
+  app->Router.get("/v1/images", Images.list)
+}
+
+let ajv = Ajv.make(~allErrors=true)
+AjvFormats.default(ajv)
+
+let _ = Schema.loadSchemas()
+
+Js.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                    Svalinn Edge Shield                         ║
 ║            Post-Cloud Security Architecture                    ║
 ╠═══════════════════════════════════════════════════════════════╣
 ║  Version:    0.1.0                                             ║
-║  Port:       ${String(config.port).padEnd(48)}║
-║  Vörðr:      ${config.vordrEndpoint.padEnd(48)}║
-║  Spec:       ${config.specVersion.padEnd(48)}║
+║  Port:       ${String.make(Config.port)->Js.String.padEnd(48)}║
+║  Vörðr:      ${Config.vordrEndpoint->Js.String.padEnd(48)}║
+║  Spec:       ${Config.specVersion->Js.String.padEnd(48)}║
 ╚═══════════════════════════════════════════════════════════════╝
-`);
+`)
 
-Deno.serve({ port: config.port, hostname: config.host }, app.fetch);
+Deno.serve({port: Config.port, hostname: Config.host}, Router.app->Router.handleRequest)
