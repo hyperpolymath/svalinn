@@ -11,20 +11,10 @@ image:https://img.shields.io/badge/Philosophy-Palimpsest-purple.svg[Palimpsest,l
 
 image:https://img.shields.io/badge/spec-verified--container--spec-green.svg[Spec,link="https://github.com/hyperpolymath/verified-container-spec"]
 
-*Post-Cloud Security Architecture: A ReScript-powered edge shield (Deno) guarding container operations via Vörðr.*
+*Post-Cloud Security Architecture: Edge gateway for verified container operations.*
 
 [.lead]
-Svalinn is the edge-facing gateway that receives container operation requests and delegates verification to https://github.com/hyperpolymath/vordr[Vörðr]. It provides HTTP/3 API access, request validation, and AI-assisted orchestration via MCP.
-
-[IMPORTANT]
-====
-**Architecture Change (2025-01-15)**: The Vörðr container engine has been extracted to its own repository.
-
-* Container engine code → https://github.com/hyperpolymath/vordr[hyperpolymath/vordr]
-* Protocol specification → https://github.com/hyperpolymath/verified-container-spec[hyperpolymath/verified-container-spec]
-
-See link:REFERENCE.adoc[REFERENCE.adoc] for integration guidelines.
-====
+Svalinn is a Deno-based HTTP gateway that validates container operation requests and delegates to https://github.com/hyperpolymath/vordr[Vörðr]. It provides REST API access, JSON Schema validation, policy enforcement, OAuth2/JWT authentication, and a Compose-compatible orchestration CLI (`svalinn-compose`).
 
 == Project Status
 
@@ -32,25 +22,25 @@ See link:REFERENCE.adoc[REFERENCE.adoc] for integration guidelines.
 |===
 |Component |Status |Description
 
-|*Edge Shield*
-|In Development
-|ReScript/Deno HTTP/3 gateway
-
-|*Request Validation*
-|In Development
-|Validates requests against verified-container-spec
+|*Edge Gateway*
+|Complete
+|Hono-based HTTP server with JSON Schema validation (Deno)
 
 |*Vörðr Integration*
-|Architecture Complete
-|Delegates to external Vörðr service
-
-|*MCP Server*
 |Complete
-|AI-assisted container management tool definitions
+|MCP/JSON-RPC client delegating to Vörðr
+
+|*Policy Engine*
+|Complete
+|Configurable allow/deny rules per operation
 
 |*Authentication*
-|Pending
-|OAuth2/OIDC integration
+|Complete
+|OAuth2/OIDC + JWT token validation middleware
+
+|*svalinn-compose*
+|Complete
+|Compose-compatible multi-container orchestration CLI
 |===
 
 == Architecture
@@ -82,44 +72,18 @@ See link:REFERENCE.adoc[REFERENCE.adoc] for integration guidelines.
 
 === What Svalinn Does
 
-* **Edge Gateway** — HTTP/3 API for container operations
-* **Request Validation** — Validates against verified-container-spec
-* **Delegation** — Forwards verified requests to Vörðr
-* **MCP Integration** — AI-assisted orchestration
-* **Policy Enforcement** — Applies edge-specific security policies
+* **Edge Gateway** -- REST API for container operations (Hono/Deno)
+* **Request Validation** -- JSON Schema validation against verified-container-spec
+* **Delegation** -- Forwards verified requests to Vörðr via MCP/JSON-RPC
+* **Policy Enforcement** -- Configurable allow/deny rules per operation type
+* **Authentication** -- OAuth2/OIDC and JWT token validation
+* **Compose Orchestration** -- Multi-container deployment via `svalinn-compose`
 
 === What Svalinn Does NOT Do
 
-* **Container Runtime** — That's https://github.com/hyperpolymath/vordr[Vörðr]
-* **Image Building** — That's https://github.com/hyperpolymath/cerro-torre[Cerro Torre]
-* **Protocol Definition** — That's https://github.com/hyperpolymath/verified-container-spec[verified-container-spec]
-
-== Technology Stack
-
-[cols="1,1,2",options="header"]
-|===
-|Layer |Technology |Purpose
-
-|*Edge API*
-|Deno + OpenLiteSpeed
-|HTTP/3 serving, edge compute
-
-|*Business Logic*
-|ReScript
-|Type-safe request handling
-
-|*Validation*
-|verified-container-spec
-|Protocol conformance
-
-|*Container Ops*
-|Vörðr (external)
-|Delegated container management
-
-|*AI Integration*
-|MCP
-|AI-assisted management
-|===
+* **Container Runtime** -- That's https://github.com/hyperpolymath/vordr[Vörðr]
+* **Image Building** -- That's https://github.com/hyperpolymath/cerro-torre[Cerro Torre]
+* **Formal Verification** -- That's the Idris2/Elixir layers in Vörðr
 
 == Getting Started
 
@@ -127,124 +91,166 @@ See link:REFERENCE.adoc[REFERENCE.adoc] for integration guidelines.
 
 [source,shell]
 ----
-# Deno runtime
+# Deno runtime (>= 2.0)
 curl -fsSL https://deno.land/install.sh | sh
 
-# ReScript compiler
-npm install -g rescript
-
-# Vörðr service (external dependency)
-# See https://github.com/hyperpolymath/vordr
+# Just command runner (optional but recommended)
+cargo install just
 ----
 
 === Configuration
 
 [source,shell]
 ----
-# Set Vörðr endpoint
-export VORDR_ENDPOINT="http://localhost:8080"
-
-# Set verification spec
-export SPEC_VERSION="v0.1.0"
+export SVALINN_PORT=8000           # Gateway port (default: 8000)
+export SVALINN_HOST=0.0.0.0        # Bind address (default: 0.0.0.0)
+export VORDR_ENDPOINT=http://localhost:8080  # Vörðr MCP endpoint
+export SPEC_VERSION=v0.1.0         # Spec version for validation
 ----
 
-=== Run
+=== Build and Run
 
 [source,shell]
 ----
-# Development
+# Development (hot reload)
 just dev
 
-# Production
-just build
+# Production server
 just serve
+
+# Compile to binary
+just build
+
+# Run tests
+just test
 ----
+
+== svalinn-compose
+
+Compose-compatible orchestration with security extensions.
+
+[source,shell]
+----
+# Start services defined in svalinn-compose.yaml
+svalinn-compose up
+
+# Start in detached mode
+svalinn-compose up -d
+
+# Stop and remove containers
+svalinn-compose down
+
+# List running services
+svalinn-compose ps
+
+# View logs (follow mode)
+svalinn-compose logs -f web
+
+# Scale a service
+svalinn-compose scale web=3
+
+# Validate compose file
+svalinn-compose config
+----
+
+=== Compose File Format
+
+[source,yaml]
+----
+version: "1.0"
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    x-svalinn:
+      policy: strict
+      verify: true
+
+x-svalinn:
+  policy: standard
+  attestations:
+    require-sbom: true
+    require-signature: true
+----
+
+== REST API
+
+[cols="1,2,2",options="header"]
+|===
+|Endpoint |Method |Description
+
+|`/healthz`
+|GET
+|Health check with Vörðr connection status
+
+|`/v1/containers`
+|GET
+|List all containers
+
+|`/v1/containers/:id`
+|GET
+|Get container info
+
+|`/v1/run`
+|POST
+|Run a container (validated against schema)
+
+|`/v1/verify`
+|POST
+|Verify image attestations
+
+|`/v1/containers/:id/stop`
+|POST
+|Stop a container
+
+|`/v1/containers/:id`
+|DELETE
+|Remove a container
+
+|`/v1/images`
+|GET
+|List images
+|===
 
 == Project Structure
 
 ----
 svalinn/
-├── src/                    # ReScript source (pending)
-│   ├── gateway/            # HTTP/3 gateway
-│   ├── validation/         # Request validation
-│   ├── vordr/              # Vörðr client
-│   └── mcp/                # MCP server
-├── spec/                   # Local spec reference
-├── docs/                   # Documentation
-├── evidence/               # Security evidence
-├── .meta/                  # Project metadata
-├── ECOSYSTEM.scm           # Ecosystem positioning
-├── REFERENCE.adoc          # External dependencies
-├── Justfile                # Build orchestration
-└── README.adoc             # This file
+├── src/
+│   ├── main.ts             # HTTP gateway entry point
+│   ├── gateway/            # Request routing
+│   ├── validation/         # JSON Schema validation
+│   ├── policy/             # Policy engine (evaluator, store)
+│   ├── auth/               # OAuth2, JWT middleware
+│   ├── compose/            # svalinn-compose orchestrator
+│   ├── integrations/       # Cerro Torre, verified-container-spec
+│   ├── vordr/              # Vörðr MCP client
+│   ├── mcp/                # MCP tool definitions
+│   └── tests/              # Test suite
+├── spec/                   # JSON Schema definitions
+│   └── schemas/            # gateway-*.json, container-*.json
+├── Justfile                # Build commands
+└── deno.json               # Deno configuration
 ----
 
-== External Dependencies
-
-See link:REFERENCE.adoc[REFERENCE.adoc] for complete dependency documentation.
+== Integration with Svalinn Ecosystem
 
 [cols="1,2,1",options="header"]
 |===
-|Dependency |Purpose |Repository
+|Component |Role |Link
 
 |*Vörðr*
-|Container engine (runtime, verification, proofs)
-|https://github.com/hyperpolymath/vordr[hyperpolymath/vordr]
+|Container engine with formal verification
+|https://github.com/hyperpolymath/vordr[vordr]
+
+|*Cerro Torre*
+|Provenance-verified image packaging
+|https://github.com/hyperpolymath/cerro-torre[cerro-torre]
 
 |*verified-container-spec*
 |Protocol specification
-|https://github.com/hyperpolymath/verified-container-spec[hyperpolymath/verified-container-spec]
-
-|*Cerro Torre*
-|Provenance-verified builds
-|https://github.com/hyperpolymath/cerro-torre[hyperpolymath/cerro-torre]
-|===
-
-== MCP Integration
-
-Svalinn exposes MCP tools that delegate to Vörðr:
-
-[source,json]
-----
-{
-  "tools": [
-    "svalinn_run",        // Validate and delegate to vordr_run
-    "svalinn_ps",         // List via Vörðr
-    "svalinn_stop",       // Validate and delegate
-    "svalinn_verify",     // Check attestation via Vörðr
-    "svalinn_policy"      // Edge policy management
-  ]
-}
-----
-
-== Security Model
-
-=== Edge Validation
-
-All requests pass through Svalinn's validation layer before reaching Vörðr:
-
-1. **Schema Validation** — Request matches verified-container-spec
-2. **Policy Check** — Edge-specific policies applied
-3. **Attestation Verification** — Delegated to Vörðr
-4. **Audit Logging** — All operations logged
-
-=== Trust Boundaries
-
-[cols="1,1,2",options="header"]
-|===
-|Boundary |Owner |Requirements
-
-|*Public Edge*
-|Svalinn
-|Request validation, rate limiting
-
-|*Verification*
-|Vörðr
-|Formal proofs, attestation checks
-
-|*Build*
-|Cerro Torre
-|Provenance, signing
+|https://github.com/hyperpolymath/verified-container-spec[verified-container-spec]
 |===
 
 == Development
@@ -254,20 +260,21 @@ All requests pass through Svalinn's validation layer before reaching Vörðr:
 [source,shell]
 ----
 just                    # List all commands
-just dev                # Development server
-just build              # Production build
-just test               # Run tests
+just dev                # Development server (hot reload)
+just serve              # Production server
+just build              # Compile to binary (dist/svalinn)
+just test               # Run test suite
+just check              # Type check
 just lint               # Lint code
 just fmt                # Format code
+just precommit          # fmt + lint + check + test
 ----
 
 === Contributing
 
-See link:CONTRIBUTING.md[CONTRIBUTING.md] for guidelines.
-
-* *Language Policy*: ReScript, Deno only. No TypeScript, Go, or Python.
-* *Security*: HTTPS only, no hardcoded secrets.
-* *Licensing*: MIT OR AGPL-3.0-or-later, SPDX headers required.
+* *Language Policy*: Deno/TypeScript only (no Node, npm, bun)
+* *Security*: HTTPS in production, no hardcoded secrets
+* *Licensing*: PMPL-1.0 OR AGPL-3.0-or-later, SPDX headers required
 
 == License
 
