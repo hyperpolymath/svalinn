@@ -253,6 +253,12 @@ svalinn/
 |https://github.com/hyperpolymath/verified-container-spec[verified-container-spec]
 |===
 
+=== Runtime Integration Gateway
+
+Svalinn can act as a centralized verification gateway for other runtimes (nerdctl, Podman). This allows existing container tools to delegate `.ctp` verification to Svalinn, which then forwards verified requests to Vörðr.
+
+See the https://github.com/hyperpolymath/verified-container-spec/blob/main/spec/runtime-integration.adoc[Runtime Integration Specification] for details on the gateway pattern (Section 4.4).
+
 == Development
 
 === Justfile Commands
