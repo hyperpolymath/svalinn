@@ -251,8 +251,54 @@ let errorHandler = (): Hono.middleware<'env, 'path> => {
   }
 }
 
-// Create Hono app
-let createApp = (): Hono.t<'env> => {
+// Validation helper - validates request body and returns 400 on error
+let validateRequest = (
+  c: Hono.Context.t<'env, 'path>,
+  validator: Validation.t,
+  schemaId: string,
+  body: Js.Json.t
+): option<Hono.Response.t> => {
+  let result = Validation.validate(validator, schemaId, body)
+
+  if !result.valid {
+    switch result.errors {
+    | Some(errors) => {
+        let formattedErrors = Validation.formatErrors(errors)
+        Log.warn("Validation failed", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([
+            ("schema", Js.Json.string(schemaId)),
+            ("errors", Js.Json.array(formattedErrors))
+          ])
+        ), ())
+
+        Some(Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([
+            ("error", Js.Json.string("Validation failed")),
+            ("details", Js.Json.array(formattedErrors))
+          ])),
+          ~status=400,
+          ()
+        ))
+      }
+    | None => {
+        Some(Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([
+            ("error", Js.Json.string("Validation failed"))
+          ])),
+          ~status=400,
+          ()
+        ))
+      }
+    }
+  } else {
+    None
+  }
+}
+
+// Create Hono app with validation
+let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   let app = Hono.make()
 
   // Global middleware
@@ -535,34 +581,32 @@ let createApp = (): Hono.t<'env> => {
       let body = await Hono.Request.json(req)
 
       // Validate request against schema
-      // TODO: Add validation once schemas are loaded
-      // let validator = Validation.make()
-      // let validationResult = Validation.validateRunRequest(validator, body)
-      // if !validationResult.valid {
-      //   raise validation error
-      // }
+      switch validateRequest(c, validator, "gateway-run-request", body) {
+      | Some(errorResponse) => errorResponse
+      | None => {
+          let image = Validation.getString(body, "image")->Belt.Option.getExn
+          let name = Validation.getString(body, "name")
+          let config = Validation.getObject(body, "config")->Belt.Option.map(Js.Json.object_)
 
-      let image = Validation.getString(body, "image")->Belt.Option.getExn
-      let name = Validation.getString(body, "name")
-      let config = Validation.getObject(body, "config")->Belt.Option.map(Js.Json.object_)
+          // Create container
+          let createResult = await McpClient.Container.create(mcpConfig, ~image, ~name?, ~config?, ())
 
-      // Create container
-      let createResult = await McpClient.Container.create(mcpConfig, ~image, ~name?, ~config?, ())
+          // Extract container ID from result
+          let containerId = Validation.getString(createResult, "id")->Belt.Option.getExn
 
-      // Extract container ID from result
-      let containerId = Validation.getString(createResult, "id")->Belt.Option.getExn
+          // Start container
+          let startResult = await McpClient.Container.start(mcpConfig, containerId)
 
-      // Start container
-      let startResult = await McpClient.Container.start(mcpConfig, containerId)
+          Log.info("Ran container", ~metadata=Js.Json.object_(
+            Js.Dict.fromArray([
+              ("image", Js.Json.string(image)),
+              ("containerId", Js.Json.string(containerId))
+            ])
+          ), ())
 
-      Log.info("Ran container", ~metadata=Js.Json.object_(
-        Js.Dict.fromArray([
-          ("image", Js.Json.string(image)),
-          ("containerId", Js.Json.string(containerId))
-        ])
-      ), ())
-
-      Hono.Context.json(c, startResult, ~status=201, ())
+          Hono.Context.json(c, startResult, ~status=201, ())
+        }
+      }
     } catch {
     | Js.Exn.Error(e) => {
         let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to run container")
@@ -586,19 +630,22 @@ let createApp = (): Hono.t<'env> => {
       let body = await Hono.Request.json(req)
 
       // Validate request against schema
-      // TODO: Add validation once schemas are loaded
+      switch validateRequest(c, validator, "gateway-verify-request", body) {
+      | Some(errorResponse) => errorResponse
+      | None => {
+          let digest = Validation.getString(body, "digest")->Belt.Option.getExn
+          let policyJson = Validation.getObject(body, "policy")->Belt.Option.map(Js.Json.object_)
 
-      let digest = Validation.getString(body, "digest")->Belt.Option.getExn
-      let policyJson = Validation.getObject(body, "policy")->Belt.Option.map(Js.Json.object_)
+          // Verify image (which includes .ctp bundle verification)
+          let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
 
-      // Verify image (which includes .ctp bundle verification)
-      let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
+          Log.info("Verified bundle", ~metadata=Js.Json.object_(
+            Js.Dict.fromArray([("digest", Js.Json.string(digest))])
+          ), ())
 
-      Log.info("Verified bundle", ~metadata=Js.Json.object_(
-        Js.Dict.fromArray([("digest", Js.Json.string(digest))])
-      ), ())
-
-      Hono.Context.json(c, result, ())
+          Hono.Context.json(c, result, ())
+        }
+      }
     } catch {
     | Js.Exn.Error(e) => {
         let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to verify bundle")
@@ -687,8 +734,15 @@ let createApp = (): Hono.t<'env> => {
 }
 
 // Start server
-let serve = () => {
-  let app = createApp()
+let serve = async () => {
+  // Load JSON schemas
+  Log.info("Loading JSON schemas...", ())
+  let validator = Validation.make()
+  let validatorWithSchemas = await Validation.loadStandardSchemas(validator)
+  Log.info("JSON schemas loaded", ())
+
+  // Create app with validator
+  let app = createAppWithValidator(validatorWithSchemas)
 
   Log.info(
     "Starting Svalinn Gateway",
