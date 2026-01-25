@@ -37,25 +37,40 @@ container-build:
 
 # --- Tests & Checks ---
 test:
-    @echo "🧪 Running tests (ReScript + Deno)"
-    cd src && deno test --allow-net --allow-read --allow-env
+    @echo "🧪 Running integration tests"
+    deno run --allow-all tests/integration_test.res.mjs
+
+test-e2e:
+    @echo "🧪 Running E2E tests (requires Vörðr)"
+    ./tests/e2e_test.sh
+
+bench:
+    @echo "📊 Running benchmarks"
+    deno bench --allow-net benchmarks/gateway_bench.ts
+
+load-test:
+    @echo "🔥 Running load tests"
+    deno run --allow-net benchmarks/load_test.ts
 
 check:
     @echo "🔍 Type-checking ReScript"
-    cd src && npx rescript check
+    rescript check
 
 fmt:
     @echo "✨ Formatting code"
-    cd src && deno fmt
-    cd ui && npx rescript format
+    deno fmt
+    rescript format -all
 
 lint:
     @echo "📖 Linting (Deno + ReScript)"
-    cd src && deno lint
-    cd ui && npx rescript lint
+    deno lint
 
 # --- Security & Compliance ---
-precommit: fmt lint check test
+security-audit:
+    @echo "🔒 Running security audit"
+    ./scripts/security_audit.sh
+
+precommit: fmt lint check test security-audit
 
 # Ethical compliance (PhD research)
 ethical-check:
