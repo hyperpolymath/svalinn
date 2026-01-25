@@ -20,12 +20,13 @@
 
 ---
 
-## Phase 1: Vörðr Production (90-92% Complete)
+## Phase 1: Vörðr Production (92% Complete) ✅
 
-**Status:** 🔄 In Progress (testing complete, eBPF kernel-side pending)
+**Status:** ✅ **READY FOR PHASE 3** (core complete, eBPF kernel-side deferred to v0.6.0)
 **Goal:** Get Vörðr to 100% production-ready
+**Version:** v0.5.0-rc1 candidate
 
-### ✅ Completed
+### ✅ Completed (Session 2026-01-25)
 - ✅ Core container lifecycle (create, start, stop, pause, resume, kill, delete)
 - ✅ State management (SQLite with WAL/DELETE mode)
 - ✅ OCI config builder
@@ -33,10 +34,12 @@
 - ✅ Networking (Netavark integration)
 - ✅ Registry client (OCI Distribution)
 - ✅ CLI framework (16 commands)
-- ✅ MCP server stub (11 tool definitions)
+- ✅ MCP server (11 tool definitions, JSON-RPC 2.0, Axum)
 - ✅ Gatekeeper FFI bindings
 - ✅ **eBPF Userspace** (100%) - ProbeManager, Monitor, CLI integration
 - ✅ **Integration Tests** (70%+) - 44 tests passing for all CLI commands
+- ✅ **CI/CD Pipelines** (100%) - GitHub Actions + GitLab CI fixed and passing
+- ✅ **Documentation** (100%) - README, CLI Reference, Monitoring Guide (1,713 lines)
 
 ### ⏳ In Progress / Remaining
 - ⏳ **eBPF Kernel-Side Programs** (0% → need 100%)
@@ -160,16 +163,17 @@
 
 ---
 
-## Phase 3: Full Stack Integration (0% - Planned)
+## Phase 3: Full Stack Integration (Planning Complete - Ready to Start)
 
-**Status:** ⏳ Not Started
+**Status:** 📋 **PLANNING COMPLETE** - Ready to begin Week 1
 **Goal:** Cerro Torre + Vörðr + Svalinn working end-to-end
 **Timeline:** 6-8 weeks
+**Plan:** `PHASE3-PLAN-2026-01-25.md` (created 2026-01-25)
 
 ### Prerequisites (from Phases 1 & 2)
-- ✅ Svalinn gateway operational (Phase 2 complete)
-- ⏳ Vörðr runtime operational (Phase 1 in progress)
-- ✅ Cerro Torre builder functional (Phase 0 complete)
+- ✅ Svalinn gateway operational (Phase 2 complete - 95%)
+- ✅ Vörðr runtime operational (Phase 1 complete - 92%)
+- ✅ Cerro Torre builder functional (Phase 0 complete - 65% MVP)
 
 ### Planned Tasks
 
@@ -291,12 +295,16 @@
 - ✅ **Phase 2:** Svalinn v0.2.0-rc1 (95% complete)
 
 ### In Progress
-- 🔄 **Phase 1:** Vörðr (85-90% complete, needs eBPF + tests)
+- 🔄 **Phase 3:** Full Stack Integration (planning complete, Week 1 starting)
+
+### Recently Completed
+- ✅ **Phase 1:** Vörðr (92% complete, v0.5.0-rc1 candidate)
+- ✅ **Phase 2:** Svalinn (95% complete, v0.2.0-rc1 released)
 
 ### Next Up
-- ⏳ **Phase 1 Completion:** Finish Vörðr (2-3 weeks remaining)
-- ⏳ **Phase 3:** Full Stack Integration (6-8 weeks)
-- ⏳ **Phase 4:** selur Optimization (8-12 weeks)
+- 🔄 **Phase 3 Week 1:** Svalinn ↔ Vörðr E2E testing (starting now)
+- ⏳ **Phase 3 Weeks 2-3:** .ctp runtime support in Vörðr
+- ⏳ **Phase 4:** selur Optimization (8-12 weeks, after Phase 3)
 
 ### Total Progress
 - **Weeks Elapsed:** ~6-8 weeks
@@ -320,15 +328,18 @@
 
 ## Next Actions (Priority Order)
 
-### Immediate (This Week)
-1. **Phase 1:** Implement eBPF probes in Vörðr
-2. **Phase 1:** Write Vörðr integration tests
-3. **Phase 2:** Test Svalinn with running Vörðr instance
+### Immediate (This Week - Phase 3 Week 1)
+1. ✅ **Phase 3 Planning Complete** - PHASE3-PLAN-2026-01-25.md created
+2. **Phase 3:** Set up local testing environment (Vörðr + Svalinn)
+3. **Phase 3:** Run E2E tests (all 12 Svalinn API endpoints → Vörðr MCP)
+4. **Phase 3:** Load testing (baseline performance measurement)
+5. **Phase 3:** Update documentation with E2E integration guide
 
-### Short-Term (This Month)
-4. **Phase 1:** Complete Vörðr v0.5.0 release
-5. **Phase 3:** Begin Cerro Torre registry operations
-6. **Phase 3:** Plan .ctp runtime integration
+### Short-Term (Next 2 Weeks - Phase 3 Weeks 2-3)
+6. **Phase 3:** Implement .ctp loader in Vörðr (`src/rust/runtime/ctp_loader.rs`)
+7. **Phase 3:** Add `vordr run --ctp` CLI support
+8. **Phase 3:** Integration tests (pack with Cerro Torre, run with Vörðr)
+9. **Phase 1:** Optional - Tag Vörðr v0.5.0-rc1 (or defer to after Phase 3)
 
 ### Medium-Term (Next 2-3 Months)
 7. **Phase 3:** Complete full stack integration
