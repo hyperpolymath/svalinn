@@ -867,10 +867,16 @@ let serve = async () => {
   )
 
   // Start the server with Deno.serve
-  %raw(`
-    Deno.serve({
+  let handler = (req: Fetch.Request.t): promise<Fetch.Response.t> => {
+    app->Hono.fetch(req, %raw(`{}`))
+  }
+
+  Deno.Http.serve(
+    handler,
+    {
       port: Config.port,
-      hostname: Config.host
-    }, (req) => app.fetch(req, {}))
-  `)
+      hostname: Some(Config.host),
+      signal: None,
+    }
+  )->ignore
 }

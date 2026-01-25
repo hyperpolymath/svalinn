@@ -127,8 +127,9 @@ let rec callWithRetry = async (
       Js.Console.warn(`MCP call failed (attempt ${Belt.Int.toString(attempt + 1)}): ${message}`)
 
       // Exponential backoff: 100ms, 200ms, 400ms, etc.
-      let delay = 100.0 *. Js.Math.pow_float(~base=2.0, ~exp=Belt.Int.toFloat(attempt))
-      await %raw(`new Promise(resolve => setTimeout(resolve, delay))`)
+      let delayMs = 100.0 *. Js.Math.pow_float(~base=2.0, ~exp=Belt.Int.toFloat(attempt))
+      // Sleep using Promise and setTimeout
+      let _ = await %raw(`(ms) => new Promise(resolve => setTimeout(resolve, ms))`)(delayMs)
 
       await callWithRetry(config, method, params, attempt + 1)
     }
