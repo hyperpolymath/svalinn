@@ -43,13 +43,15 @@ let nextId = (client: t): int => {
 
 // Make MCP request
 let callTool = async (client: t, toolName: string, args: JSON.t): JSON.t => {
+  // Build params object safely
+  let paramsDict = Js.Dict.empty()
+  Js.Dict.set(paramsDict, "name", JSON.Encode.string(toolName))
+  Js.Dict.set(paramsDict, "arguments", args)
+
   let request: mcpRequest = {
     jsonrpc: "2.0",
     method: "tools/call",
-    params: Obj.magic({
-      "name": toolName,
-      "arguments": args,
-    }),
+    params: JSON.Encode.object(paramsDict),
     id: nextId(client),
   }
 
@@ -66,7 +68,28 @@ let callTool = async (client: t, toolName: string, args: JSON.t): JSON.t => {
   )
 
   let json = await Fetch.Response.json(response)
-  let mcpResp: mcpResponse = Obj.magic(json)
+  // Validate response structure before casting
+  let mcpResp: mcpResponse = switch json->Js.Json.decodeObject {
+  | Some(obj) => {
+      // Check for required jsonrpc field
+      let jsonrpc = obj->Js.Dict.get("jsonrpc")->Belt.Option.flatMap(Js.Json.decodeString)
+      let id = obj->Js.Dict.get("id")->Belt.Option.flatMap(Js.Json.decodeNumber)
+      let result = obj->Js.Dict.get("result")
+      let error = obj->Js.Dict.get("error")->Belt.Option.flatMap(Js.Json.decodeObject)->Belt.Option.map(errObj => {
+        code: errObj->Js.Dict.get("code")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt)->Belt.Option.getWithDefault(-1),
+        message: errObj->Js.Dict.get("message")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getWithDefault("Unknown error"),
+        data: errObj->Js.Dict.get("data"),
+      })
+
+      {
+        jsonrpc: jsonrpc->Belt.Option.getWithDefault("2.0"),
+        id: id->Belt.Option.map(Belt.Float.toInt),
+        result,
+        error,
+      }
+    }
+  | None => raise(Js.Exn.raiseError("Invalid MCP response: expected JSON object"))
+  }
 
   switch mcpResp.error {
   | Some(err) => Js.Exn.raiseError(err.message)

@@ -75,12 +75,24 @@ let exchangeCode = async (config: oauth2Config, code: string): tokenResponse => 
   }
 
   let json = await Fetch.Response.json(response)
-  let obj = json->Js.Json.decodeObject->Belt.Option.getExn
+  let obj = switch json->Js.Json.decodeObject {
+  | Some(o) => o
+  | None => raise(Js.Exn.raiseError("Invalid token response: expected JSON object"))
+  }
 
   {
-    accessToken: obj->Js.Dict.get("access_token")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    tokenType: obj->Js.Dict.get("token_type")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    expiresIn: obj->Js.Dict.get("expires_in")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt)->Belt.Option.getExn,
+    accessToken: switch obj->Js.Dict.get("access_token")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(token) => token
+    | None => raise(Js.Exn.raiseError("Invalid token response: missing required 'access_token' field"))
+    },
+    tokenType: switch obj->Js.Dict.get("token_type")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(tt) => tt
+    | None => raise(Js.Exn.raiseError("Invalid token response: missing required 'token_type' field"))
+    },
+    expiresIn: switch obj->Js.Dict.get("expires_in")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt) {
+    | Some(exp) => exp
+    | None => raise(Js.Exn.raiseError("Invalid token response: missing required 'expires_in' field"))
+    },
     refreshToken: obj->Js.Dict.get("refresh_token")->Belt.Option.flatMap(Js.Json.decodeString),
     scope: obj->Js.Dict.get("scope")->Belt.Option.flatMap(Js.Json.decodeString),
     idToken: obj->Js.Dict.get("id_token")->Belt.Option.flatMap(Js.Json.decodeString),
@@ -118,12 +130,24 @@ let refreshToken = async (config: oauth2Config, refreshToken: string): tokenResp
   }
 
   let json = await Fetch.Response.json(response)
-  let obj = json->Js.Json.decodeObject->Belt.Option.getExn
+  let obj = switch json->Js.Json.decodeObject {
+  | Some(o) => o
+  | None => raise(Js.Exn.raiseError("Invalid token response: expected JSON object"))
+  }
 
   {
-    accessToken: obj->Js.Dict.get("access_token")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    tokenType: obj->Js.Dict.get("token_type")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    expiresIn: obj->Js.Dict.get("expires_in")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt)->Belt.Option.getExn,
+    accessToken: switch obj->Js.Dict.get("access_token")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(token) => token
+    | None => raise(Js.Exn.raiseError("Invalid token response: missing required 'access_token' field"))
+    },
+    tokenType: switch obj->Js.Dict.get("token_type")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(tt) => tt
+    | None => raise(Js.Exn.raiseError("Invalid token response: missing required 'token_type' field"))
+    },
+    expiresIn: switch obj->Js.Dict.get("expires_in")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt) {
+    | Some(exp) => exp
+    | None => raise(Js.Exn.raiseError("Invalid token response: missing required 'expires_in' field"))
+    },
     refreshToken: obj->Js.Dict.get("refresh_token")->Belt.Option.flatMap(Js.Json.decodeString),
     scope: obj->Js.Dict.get("scope")->Belt.Option.flatMap(Js.Json.decodeString),
     idToken: obj->Js.Dict.get("id_token")->Belt.Option.flatMap(Js.Json.decodeString),
@@ -233,12 +257,24 @@ let clientCredentials = async (
   }
 
   let json = await Fetch.Response.json(response)
-  let obj = json->Js.Json.decodeObject->Belt.Option.getExn
+  let obj = switch json->Js.Json.decodeObject {
+  | Some(o) => o
+  | None => raise(Js.Exn.raiseError("Invalid token response: expected JSON object"))
+  }
 
   {
-    accessToken: obj->Js.Dict.get("access_token")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    tokenType: obj->Js.Dict.get("token_type")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    expiresIn: obj->Js.Dict.get("expires_in")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt)->Belt.Option.getExn,
+    accessToken: switch obj->Js.Dict.get("access_token")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(token) => token
+    | None => raise(Js.Exn.raiseError("Invalid token response: missing required 'access_token' field"))
+    },
+    tokenType: switch obj->Js.Dict.get("token_type")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(tt) => tt
+    | None => raise(Js.Exn.raiseError("Invalid token response: missing required 'token_type' field"))
+    },
+    expiresIn: switch obj->Js.Dict.get("expires_in")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt) {
+    | Some(exp) => exp
+    | None => raise(Js.Exn.raiseError("Invalid token response: missing required 'expires_in' field"))
+    },
     refreshToken: obj->Js.Dict.get("refresh_token")->Belt.Option.flatMap(Js.Json.decodeString),
     scope: obj->Js.Dict.get("scope")->Belt.Option.flatMap(Js.Json.decodeString),
     idToken: obj->Js.Dict.get("id_token")->Belt.Option.flatMap(Js.Json.decodeString),

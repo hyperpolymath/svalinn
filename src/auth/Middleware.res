@@ -3,8 +3,36 @@
 
 open AuthTypes
 
+// Deno environment variable access
+@scope("Deno") @val external getEnv: string => option<string> = "env.get"
+
+// Try each authentication method until one succeeds
+let rec tryAuthMethods = async (
+  c: Hono.Context.t<'env, 'path>,
+  config: authConfig,
+  methods: array<authMethod>,
+  index: int,
+  result: ref<authResult>
+) => {
+  if index >= Belt.Array.length(methods) {
+    ()
+  } else {
+    switch methods->Belt.Array.get(index) {
+    | Some(method) => {
+        let r: authResult = await tryAuthenticate(c, config, method)
+        if r.authenticated {
+          result := r
+        } else {
+          await tryAuthMethods(c, config, methods, index + 1, result)
+        }
+      }
+    | None => () // Should never happen due to bounds check, but safe
+    }
+  }
+}
+
 // Create authentication middleware
-let authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
+and authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
   async (c, next) => {
     // Skip if auth disabled
     if !config.enabled {
@@ -26,34 +54,14 @@ let authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
         // Try authentication methods in order
         let result = ref({
           authenticated: false,
-          method: None,
+          method: AuthTypes.None,
           subject: None,
           scopes: None,
           token: None,
           error: Some("No authentication provided"),
         })
 
-        // Try each method until one succeeds
-        let rec tryMethods = (methods: array<authMethod>, index: int) => {
-          if index >= Belt.Array.length(methods) {
-            Promise.resolve()
-          } else {
-            switch methods->Belt.Array.get(index) {
-            | Some(method) =>
-              tryAuthenticate(c, config, method)->Promise.then(r => {
-                if r.authenticated {
-                  result := r
-                  Promise.resolve()
-                } else {
-                  tryMethods(methods, index + 1)
-                }
-              })
-            | None => Promise.resolve() // Should never happen due to bounds check, but safe
-            }
-          }
-        }
-
-        await tryMethods(config.methods, 0)
+        await tryAuthMethods(c, config, config.methods, 0, result)
 
         // Store result
         Hono.Context.set(c, "authResult", result.contents)
@@ -81,7 +89,7 @@ let authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
             name: token->Belt.Option.flatMap(t => t.name),
             groups: token->Belt.Option.flatMap(t => t.groups)->Belt.Option.getWithDefault([]),
             scopes: result.contents.scopes->Belt.Option.getWithDefault([]),
-            method: result.contents.method->Belt.Option.getWithDefault(None),
+            method: result.contents.method,
             issuedAt: token->Belt.Option.map(t => t.iat)->Belt.Option.getWithDefault(
               Js.Date.now() /. 1000.0 |> Belt.Float.toInt
             ),
@@ -106,7 +114,14 @@ and tryAuthenticate = async (
   | OAuth2 | OIDC => await authenticateBearerToken(c, config)
   | ApiKey => authenticateApiKey(c, config)
   | MTLS => authenticateMTLS(c)
-  | None => {authenticated: true, method: Some(None), subject: None, scopes: None, token: None, error: None}
+  | AuthTypes.None => {
+      authenticated: true,
+      method: AuthTypes.None,
+      subject: None,
+      scopes: None,
+      token: None,
+      error: None,
+    }
   }
 }
 
@@ -121,7 +136,7 @@ and authenticateBearerToken = async (
   switch authHeader {
   | None => {
       authenticated: false,
-      method: Some(OIDC),
+      method: OIDC,
       subject: None,
       scopes: None,
       token: None,
@@ -129,7 +144,7 @@ and authenticateBearerToken = async (
     }
   | Some(auth) if !Js.String2.startsWith(auth, "Bearer ") => {
       authenticated: false,
-      method: Some(OIDC),
+      method: OIDC,
       subject: None,
       scopes: None,
       token: None,
@@ -166,7 +181,7 @@ and authenticateBearerToken = async (
 
         {
           authenticated: true,
-          method: Some(OIDC),
+          method: OIDC,
           subject: Some(payload.sub),
           scopes: Some(scopes),
           token: Some(payload),
@@ -177,7 +192,7 @@ and authenticateBearerToken = async (
           let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Unknown error")
           {
             authenticated: false,
-            method: Some(OIDC),
+            method: OIDC,
             subject: None,
             scopes: None,
             token: None,
@@ -194,7 +209,7 @@ and authenticateApiKey = (c: Hono.Context.t<'env, 'path>, config: authConfig): a
   switch config.apiKey {
   | None => {
       authenticated: false,
-      method: Some(ApiKey),
+      method: ApiKey,
       subject: None,
       scopes: None,
       token: None,
@@ -208,7 +223,7 @@ and authenticateApiKey = (c: Hono.Context.t<'env, 'path>, config: authConfig): a
       switch apiKeyValue {
       | None => {
           authenticated: false,
-          method: Some(ApiKey),
+          method: ApiKey,
           subject: None,
           scopes: None,
           token: None,
@@ -226,7 +241,7 @@ and authenticateApiKey = (c: Hono.Context.t<'env, 'path>, config: authConfig): a
           switch Map.String.get(apiKeyConfig.keys, key) {
           | None => {
               authenticated: false,
-              method: Some(ApiKey),
+              method: ApiKey,
               subject: None,
               scopes: None,
               token: None,
@@ -246,7 +261,7 @@ and authenticateApiKey = (c: Hono.Context.t<'env, 'path>, config: authConfig): a
               if isExpired {
                 {
                   authenticated: false,
-                  method: Some(ApiKey),
+                  method: ApiKey,
                   subject: None,
                   scopes: None,
                   token: None,
@@ -282,7 +297,7 @@ and authenticateApiKey = (c: Hono.Context.t<'env, 'path>, config: authConfig): a
 
                 {
                   authenticated: true,
-                  method: Some(ApiKey),
+                  method: ApiKey,
                   subject: Some(keyInfo.id),
                   scopes: Some(keyInfo.scopes),
                   token: Some(tokenPayload),
@@ -307,7 +322,7 @@ and authenticateMTLS = (c: Hono.Context.t<'env, 'path>): authResult => {
   switch (clientCert, clientCertVerify) {
   | (None, _) | (_, None) | (_, Some(verify)) if verify != "SUCCESS" => {
       authenticated: false,
-      method: Some(MTLS),
+      method: MTLS,
       subject: None,
       scopes: None,
       token: None,
@@ -323,7 +338,7 @@ and authenticateMTLS = (c: Hono.Context.t<'env, 'path>): authResult => {
 
       {
         authenticated: true,
-        method: Some(MTLS),
+        method: MTLS,
         subject: Some(subject),
         scopes: Some(["svalinn:read", "svalinn:write"]),
         token: None,
@@ -439,8 +454,6 @@ let createAuthConfig = (~options: option<authConfig>=?, ()): authConfig => {
 }
 
 // Load auth config from environment
-@scope("Deno") @val external getEnv: string => option<string> = "env.get"
-
 let loadAuthConfigFromEnv = (): authConfig => {
   let enabled = getEnv("AUTH_ENABLED") == Some("true")
 
