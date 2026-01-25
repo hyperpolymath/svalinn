@@ -49,7 +49,29 @@
          (consequences
            ((positive . "Industry standard validation")
             (positive . "Schema-driven API documentation")
-            (negative . "Schema maintenance overhead"))))))
+            (negative . "Schema maintenance overhead"))))
+       (adr-006
+         (status . accepted)
+         (date . "2026-01-25")
+         (context . "30 TypeScript files remained in codebase (CLAUDE.md bans TypeScript)")
+         (decision . "Delete all TypeScript files use ReScript exclusively")
+         (consequences
+           ((positive . "Language policy compliance (no TypeScript)")
+            (positive . "Removed 8309 lines of TypeScript")
+            (positive . "No duplicate implementations (TS + ReScript)")
+            (negative . "Tests need rewriting in ReScript")
+            (negative . "Benchmarks need rewriting"))))
+       (adr-007
+         (status . accepted)
+         (date . "2026-01-25")
+         (context . "BuckleScript (bs) naming deprecated in ReScript ecosystem")
+         (decision . "Use modern .res.js suffix instead of .bs.js remove bs artifacts")
+         (consequences
+           ((positive . "Future-proof naming conventions")
+            (positive . "Aligns with ReScript 11+ standards")
+            (positive . "Clearer separation from legacy BuckleScript")
+            (negative . "Breaking change for existing builds")
+            (negative . "Requires rebuild of all modules"))))))
     (development-practices
       ((code-style . "rescript")
        (security . "openssf-scorecard")
