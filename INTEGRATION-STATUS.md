@@ -125,16 +125,19 @@
 - Needs real OIDC provider (e.g., Auth0, Keycloak) or mock for testing
 - Integration tests created but not yet run (tests/integration_test.res)
 
-## Sealing (Planned)
+## Sealing (In Progress)
 
-### 1. Cleanup Deprecated Files
-```bash
-# Delete old implementations
-rm src/gateway/Handlers.res
-rm src/gateway/Server.res
-rm src/validation/Schema.res
-# Keep mcp/Server.res, mcp/Tools.res if needed for edge MCP server
-```
+### 1. Cleanup Deprecated Files ✅ COMPLETE
+**Status:** ✅ Complete (2026-01-25)
+**Files deleted:**
+- ✅ src/gateway/Handlers.res - Replaced by Gateway.res
+- ✅ src/gateway/Server.res - Replaced by Gateway.res
+- ✅ src/validation/Schema.res - Replaced by Validation.res
+
+**Files kept:**
+- ✅ mcp/McpClient.res - Production MCP client
+- ⏳ mcp/Server.res - Kept for potential edge MCP server (not currently used)
+- ⏳ mcp/Tools.res - Kept for potential edge MCP server (not currently used)
 
 ### 2. Consolidate Types
 - Move shared types to gateway/Types.res
