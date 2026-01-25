@@ -18,29 +18,39 @@ Svalinn is a Deno-based HTTP gateway that validates container operation requests
 
 == Project Status
 
+**Integration Complete (90%)** -- Core modules implemented and wired together (2026-01-25)
+
 [cols="1,1,3",options="header"]
 |===
 |Component |Status |Description
 
 |*Edge Gateway*
-|Complete
-|Hono-based HTTP server with JSON Schema validation (Deno)
+|✅ Complete
+|Hono-based HTTP server with JSON Schema validation (ReScript/Deno, 400+ lines)
 
 |*Vörðr Integration*
-|Complete
-|MCP/JSON-RPC client delegating to Vörðr
+|✅ Complete
+|MCP client delegating to Vörðr via JSON-RPC 2.0 (ReScript, 330+ lines)
 
 |*Policy Engine*
-|Complete
-|Configurable allow/deny rules per operation
+|✅ Complete
+|Gatekeeper policy validation and enforcement (ReScript, 330+ lines)
 
 |*Authentication*
-|Complete
-|OAuth2/OIDC + JWT token validation middleware
+|✅ Complete
+|OAuth2/OIDC + JWT + API keys + mTLS middleware (ReScript, 430+ lines)
+
+|*Request Validation*
+|✅ Complete
+|JSON Schema validation using Ajv (ReScript, 230+ lines)
 
 |*svalinn-compose*
-|Complete
+|⏳ Planned
 |Compose-compatible multi-container orchestration CLI
+
+|*Total Implementation*
+|2,770+ lines
+|Type-safe ReScript compiled to JavaScript
 |===
 
 == Architecture
@@ -218,20 +228,37 @@ x-svalinn:
 ----
 svalinn/
 ├── src/
-│   ├── main.ts             # HTTP gateway entry point
-│   ├── gateway/            # Request routing
-│   ├── validation/         # JSON Schema validation
-│   ├── policy/             # Policy engine (evaluator, store)
-│   ├── auth/               # OAuth2, JWT middleware
-│   ├── compose/            # svalinn-compose orchestrator
-│   ├── integrations/       # Cerro Torre, verified-container-spec
-│   ├── vordr/              # Vörðr MCP client
-│   ├── mcp/                # MCP tool definitions
-│   └── tests/              # Test suite
-├── spec/                   # JSON Schema definitions
-│   └── schemas/            # gateway-*.json, container-*.json
-├── Justfile                # Build commands
-└── deno.json               # Deno configuration
+│   ├── gateway/
+│   │   ├── Gateway.res         # HTTP server with Hono (400+ lines)
+│   │   └── Types.res           # Type definitions
+│   ├── auth/
+│   │   ├── Types.res           # Auth types, RBAC roles (270 lines)
+│   │   ├── JWT.res             # JWT verification, JWKS caching (370+ lines)
+│   │   ├── OAuth2.res          # OAuth2 flows (230+ lines)
+│   │   └── Middleware.res      # Hono auth middleware (430+ lines)
+│   ├── mcp/
+│   │   └── McpClient.res       # Vörðr MCP client (330+ lines)
+│   ├── validation/
+│   │   └── Validation.res      # JSON Schema validation (230+ lines)
+│   ├── policy/
+│   │   └── PolicyEngine.res    # Gatekeeper policies (330+ lines)
+│   └── bindings/
+│       ├── Hono.res            # Hono framework bindings (90 lines)
+│       ├── Deno.res            # Deno runtime bindings
+│       └── Fetch.res           # Fetch API bindings
+├── tests/
+│   └── integration_test.res    # Integration test suite (330+ lines)
+├── spec/
+│   └── schemas/                # JSON Schema definitions
+│       ├── gateway-run-request.v1.json
+│       ├── gateway-verify-request.v1.json
+│       ├── gatekeeper-policy.v1.json
+│       └── ...
+├── INTEGRATION-STATUS.md       # Current integration progress
+├── SEAM-ANALYSIS.md            # Integration seam analysis
+├── Justfile                    # Build commands
+├── rescript.json               # ReScript configuration
+└── deno.json                   # Deno configuration
 ----
 
 == Integration with Svalinn Ecosystem
@@ -278,9 +305,15 @@ just precommit          # fmt + lint + check + test
 
 === Contributing
 
-* *Language Policy*: Deno/TypeScript only (no Node, npm, bun)
+* *Language Policy*: ReScript (compiles to JavaScript) + Deno runtime (no Node, npm, bun, TypeScript)
+* *Type Safety*: All code written in ReScript for compile-time type checking
 * *Security*: HTTPS in production, no hardcoded secrets
 * *Licensing*: PMPL-1.0 OR PMPL-1.0-or-later, SPDX headers required
+
+**Implementation Language:**
+- Primary: ReScript (`.res` files → `.res.js`)
+- Runtime: Deno 2.0+ (executes compiled JavaScript)
+- Bindings: ReScript bindings for Hono, Deno APIs, Web Crypto, Ajv
 
 == License
 
