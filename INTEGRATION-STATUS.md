@@ -68,11 +68,28 @@
 - Routes return appropriate HTTP status codes (200, 201, 500, etc.)
 - Policy enforcement ready but needs validation layer first
 
-### 2. Add Request Validation
-**Status:** Module ready, needs wiring
-- Load schemas on server startup
-- Validate all POST/PUT requests
-- Return 400 with validation errors
+### 2. Add Request Validation ✅ COMPLETE
+**Status:** ✅ Implemented (2026-01-25)
+**Files updated:**
+- `src/gateway/Gateway.res` - Schema loading and validation
+
+**Implementation:**
+- ✅ Load JSON schemas on server startup (async)
+- ✅ Validate POST /api/v1/run against gateway-run-request schema
+- ✅ Validate POST /api/v1/verify against gateway-verify-request schema
+- ✅ Return 400 with detailed validation errors
+- ✅ Created validateRequest helper function
+
+**Schemas loaded:**
+- gateway-run-request.v1.json
+- gateway-verify-request.v1.json
+- container-info.v1.json
+- error-response.v1.json
+- containers.v1.json
+- images.v1.json
+- gatekeeper-policy.v1.json
+- compose.v1.json
+- doctor-report.v1.json
 
 ### 3. Add Policy Enforcement
 **Status:** Module ready, needs wiring

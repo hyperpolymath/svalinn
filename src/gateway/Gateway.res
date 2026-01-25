@@ -538,19 +538,55 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
       let digest = Validation.getString(body, "digest")->Belt.Option.getExn
       let policyJson = Validation.getObject(body, "policy")->Belt.Option.map(Js.Json.object_)
 
-      // If policy provided, enforce it
+      // If policy provided, validate it first
       switch policyJson {
       | Some(pol) => {
-          // Verify image and get attestations
-          let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
+          // Validate policy format
+          let policyValidation = PolicyEngine.validatePolicy(validator, pol)
+          if !policyValidation.valid {
+            // Policy is malformed
+            switch policyValidation.errors {
+            | Some(errors) => {
+                let formattedErrors = Validation.formatErrors(errors)
+                Log.warn("Invalid policy format", ~metadata=Js.Json.object_(
+                  Js.Dict.fromArray([
+                    ("errors", Js.Json.array(formattedErrors))
+                  ])
+                ), ())
 
-          Log.info("Verified image with policy", ~metadata=Js.Json.object_(
-            Js.Dict.fromArray([("digest", Js.Json.string(digest))])
-          ), ())
-          Hono.Context.json(c, result, ())
+                Hono.Context.json(
+                  c,
+                  Js.Json.object_(Js.Dict.fromArray([
+                    ("error", Js.Json.string("Invalid policy format")),
+                    ("details", Js.Json.array(formattedErrors))
+                  ])),
+                  ~status=400,
+                  ()
+                )
+              }
+            | None => {
+                Hono.Context.json(
+                  c,
+                  Js.Json.object_(Js.Dict.fromArray([
+                    ("error", Js.Json.string("Invalid policy format"))
+                  ])),
+                  ~status=400,
+                  ()
+                )
+              }
+            }
+          } else {
+            // Policy is valid, send to Vörðr for enforcement
+            let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
+
+            Log.info("Verified image with policy", ~metadata=Js.Json.object_(
+              Js.Dict.fromArray([("digest", Js.Json.string(digest))])
+            ), ())
+            Hono.Context.json(c, result, ())
+          }
         }
       | None => {
-          // Verify without policy
+          // Verify without policy (use Vörðr's default policy)
           let result = await McpClient.Image.verify(mcpConfig, digest, ())
           Log.info("Verified image without policy", ~metadata=Js.Json.object_(
             Js.Dict.fromArray([("digest", Js.Json.string(digest))])
@@ -636,14 +672,55 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
           let digest = Validation.getString(body, "digest")->Belt.Option.getExn
           let policyJson = Validation.getObject(body, "policy")->Belt.Option.map(Js.Json.object_)
 
-          // Verify image (which includes .ctp bundle verification)
-          let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
+          // If policy provided, validate it first
+          let policyError = switch policyJson {
+          | Some(pol) => {
+              let policyValidation = PolicyEngine.validatePolicy(validator, pol)
+              if !policyValidation.valid {
+                switch policyValidation.errors {
+                | Some(errors) => {
+                    let formattedErrors = Validation.formatErrors(errors)
+                    Some(Hono.Context.json(
+                      c,
+                      Js.Json.object_(Js.Dict.fromArray([
+                        ("error", Js.Json.string("Invalid policy format")),
+                        ("details", Js.Json.array(formattedErrors))
+                      ])),
+                      ~status=400,
+                      ()
+                    ))
+                  }
+                | None => {
+                    Some(Hono.Context.json(
+                      c,
+                      Js.Json.object_(Js.Dict.fromArray([
+                        ("error", Js.Json.string("Invalid policy format"))
+                      ])),
+                      ~status=400,
+                      ()
+                    ))
+                  }
+                }
+              } else {
+                None
+              }
+            }
+          | None => None
+          }
 
-          Log.info("Verified bundle", ~metadata=Js.Json.object_(
-            Js.Dict.fromArray([("digest", Js.Json.string(digest))])
-          ), ())
+          switch policyError {
+          | Some(errorResponse) => errorResponse
+          | None => {
+              // Verify image (which includes .ctp bundle verification)
+              let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
 
-          Hono.Context.json(c, result, ())
+              Log.info("Verified bundle", ~metadata=Js.Json.object_(
+                Js.Dict.fromArray([("digest", Js.Json.string(digest))])
+              ), ())
+
+              Hono.Context.json(c, result, ())
+            }
+          }
         }
       }
     } catch {
