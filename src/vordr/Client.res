@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Vörðr MCP client for Svalinn
 
-open Types
+open VordrTypes
 
 // Client configuration
 type clientConfig = {

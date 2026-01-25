@@ -47,7 +47,7 @@ type apiKeyInfo = {
 type apiKeyConfig = {
   header: string,
   prefix: option<string>,
-  keys: Belt.Belt.Map.String.t<apiKeyInfo>,
+  keys: Belt.Map.String.t<apiKeyInfo>,
 }
 
 // mTLS configuration

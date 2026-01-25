@@ -16,16 +16,16 @@ module Env = {
 // File system
 module Fs = {
   @scope("Deno") @val
-  external readTextFile: string => Promise.t<string> = "readTextFile"
+  external readTextFile: string => promise<string> = "readTextFile"
 
   @scope("Deno") @val
-  external writeTextFile: (string, string) => Promise.t<unit> = "writeTextFile"
+  external writeTextFile: (string, string) => promise<unit> = "writeTextFile"
 
   @scope("Deno") @val
-  external remove: string => Promise.t<unit> = "remove"
+  external remove: string => promise<unit> = "remove"
 
   @scope("Deno") @val
-  external mkdir: (string, {..}) => Promise.t<unit> = "mkdir"
+  external mkdir: (string, {..}) => promise<unit> = "mkdir"
 
   type fileInfo = {
     isFile: bool,
@@ -34,13 +34,13 @@ module Fs = {
   }
 
   @scope("Deno") @val
-  external stat: string => Promise.t<fileInfo> = "stat"
+  external stat: string => promise<fileInfo> = "stat"
 }
 
 // HTTP server
 module Http = {
-  type conn = {
-    remoteAddr: {..},
+  type conn<'a> = {
+    remoteAddr: Js.t<'a>,
   }
 
   type request = {
@@ -50,16 +50,16 @@ module Http = {
     body: option<Fetch.Body.t>,
   }
 
-  type serveOptions = {
+  type serveOptions<'signal> = {
     port: int,
     hostname: option<string>,
-    signal: option<AbortController.signal>,
+    signal: option<'signal>,
   }
 
   @scope("Deno") @val
   external serve: (
-    (Fetch.Request.t) => Promise.t<Fetch.Response.t>,
-    serveOptions,
+    (Fetch.Request.t) => promise<Fetch.Response.t>,
+    serveOptions<'a>,
   ) => {..} = "serve"
 }
 

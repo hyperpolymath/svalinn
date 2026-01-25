@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Svalinn MCP server implementation
 
-open Types
+open McpTypes
 
 // Server info
 let serverName = "svalinn"

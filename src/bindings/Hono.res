@@ -4,30 +4,8 @@
 // Context variable map type
 type contextVariableMap
 
-// Hono context
-module Context = {
-  type t<'env, 'path>
-
-  // Request access
-  @get external req: t<'env, 'path> => Request.t = "req"
-
-  // Response helpers
-  @send external json: (t<'env, 'path>, Js.Json.t, ~status: int=?, unit) => Response.t = "json"
-  @send external text: (t<'env, 'path>, string, ~status: int=?, unit) => Response.t = "text"
-  @send external html: (t<'env, 'path>, string, ~status: int=?, unit) => Response.t = "html"
-
-  // Variable storage (for user context, auth result, etc.)
-  @send external set: (t<'env, 'path>, string, 'value) => unit = "set"
-  @send external get: (t<'env, 'path>, string) => option<'value> = "get"
-
-  // Headers
-  @send external header: (t<'env, 'path>, string, string) => unit = "header"
-
-  // Status
-  @send external status: (t<'env, 'path>, int) => t<'env, 'path> = "status"
-}
-
-// Request wrapper  module Request = {
+// Request wrapper
+module Request = {
   type t
 
   @get external method_: t => string = "method"
@@ -52,6 +30,29 @@ module Response = {
 
   @send external json: t => promise<Js.Json.t> = "json"
   @send external text: t => promise<string> = "text"
+}
+
+// Hono context
+module Context = {
+  type t<'env, 'path>
+
+  // Request access
+  @get external req: t<'env, 'path> => Request.t = "req"
+
+  // Response helpers
+  @send external json: (t<'env, 'path>, Js.Json.t, ~status: int=?, unit) => Response.t = "json"
+  @send external text: (t<'env, 'path>, string, ~status: int=?, unit) => Response.t = "text"
+  @send external html: (t<'env, 'path>, string, ~status: int=?, unit) => Response.t = "html"
+
+  // Variable storage (for user context, auth result, etc.)
+  @send external set: (t<'env, 'path>, string, 'value) => unit = "set"
+  @send external get: (t<'env, 'path>, string) => option<'value> = "get"
+
+  // Headers
+  @send external header: (t<'env, 'path>, string, string) => unit = "header"
+
+  // Status
+  @send external status: (t<'env, 'path>, int) => t<'env, 'path> = "status"
 }
 
 // Middleware next function

@@ -19,8 +19,8 @@ module Headers = {
 module Body = {
   type t
 
-  @val external string: string => t = "%identity"
-  @val external json: JSON.t => t = "%identity"
+  external string: string => t = "%identity"
+  external json: Js.Json.t => t = "%identity"
 }
 
 // Request
@@ -33,8 +33,8 @@ module Request = {
   @get external url: t => string = "url"
   @get external headers: t => Headers.t = "headers"
 
-  @send external json: t => Promise.t<JSON.t> = "json"
-  @send external text: t => Promise.t<string> = "text"
+  @send external json: t => promise<Js.Json.t> = "json"
+  @send external text: t => promise<string> = "text"
   @send external clone: t => t = "clone"
 }
 
@@ -45,9 +45,9 @@ module Response = {
   @new external make: (string, {..}) => t = "Response"
 
   @scope("Response") @val
-  external json_: (JSON.t, {..}) => t = "json"
+  external json_: (Js.Json.t, {..}) => t = "json"
 
-  let json = (data: JSON.t, ~status: int=200, ()): t => {
+  let json = (data: Js.Json.t, ~status: int=200, ()): t => {
     json_(data, {"status": status, "headers": {"Content-Type": "application/json"}})
   }
 
@@ -61,8 +61,8 @@ module Response = {
   @get external status: t => int = "status"
   @get external headers: t => Headers.t = "headers"
 
-  @send external json: t => Promise.t<JSON.t> = "json"
-  @send external text: t => Promise.t<string> = "text"
+  @send external json: t => promise<Js.Json.t> = "json"
+  @send external text: t => promise<string> = "text"
 }
 
 // Fetch options
@@ -75,4 +75,4 @@ type fetchOptions = {
 }
 
 // Fetch function
-@val external fetch: (string, {..}) => Promise.t<Response.t> = "fetch"
+@val external fetch: (string, {..}) => promise<Response.t> = "fetch"

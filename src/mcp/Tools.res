@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Svalinn MCP tool definitions
 
-open Types
+open McpTypes
 
 // Tool: svalinn_run
 // Validate and delegate container run to Vörðr

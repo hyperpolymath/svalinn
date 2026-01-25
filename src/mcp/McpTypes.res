@@ -9,14 +9,16 @@ type toolInput = {
   required: bool,
 }
 
+type inputSchema = {
+  type_: string,
+  properties: Js.Json.t,
+  required: array<string>,
+}
+
 type tool = {
   name: string,
   description: string,
-  inputSchema: {
-    type_: string,
-    properties: Js.Json.t,
-    required: array<string>,
-  },
+  inputSchema: inputSchema,
 }
 
 type textContent = {
@@ -41,13 +43,15 @@ type jsonRpcRequest = {
   id: option<int>,
 }
 
+type jsonRpcError = {
+  code: int,
+  message: string,
+}
+
 type jsonRpcResponse = {
   jsonrpc: string,
   result: option<Js.Json.t>,
-  error: option<{
-    code: int,
-    message: string,
-  }>,
+  error: option<jsonRpcError>,
   id: option<int>,
 }
 

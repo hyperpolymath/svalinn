@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // OAuth2 flow handlers for Svalinn
 
-open Types
+open AuthTypes
 
 // Token response from OAuth2 token endpoint
 type tokenResponse = {
@@ -60,22 +60,21 @@ let exchangeCode = async (config: oauth2Config, code: string): tokenResponse => 
     })
     ->Belt.Array.joinWith("&", x => x)
 
-  let response = await Fetch.fetchWithInit(
+  let response = await Fetch.fetch(
     config.tokenEndpoint,
-    Fetch.RequestInit.make(
-      ~method_=#POST,
-      ~headers=Fetch.HeadersInit.make({"Content-Type": "application/x-www-form-urlencoded"}),
-      ~body=body,
-      ()
-    )
+    {
+      "method": "POST",
+      "headers": {"Content-Type": "application/x-www-form-urlencoded"},
+      "body": body,
+    }
   )
 
-  if !response.ok {
-    let error = await response.text()
+  if !Fetch.Response.ok(response) {
+    let error = await Fetch.Response.text(response)
     raise(Js.Exn.raiseError(`Token exchange failed: ${error}`))
   }
 
-  let json = await response.json()
+  let json = await Fetch.Response.json(response)
   let obj = json->Js.Json.decodeObject->Belt.Option.getExn
 
   {
@@ -104,22 +103,21 @@ let refreshToken = async (config: oauth2Config, refreshToken: string): tokenResp
     })
     ->Belt.Array.joinWith("&", x => x)
 
-  let response = await Fetch.fetchWithInit(
+  let response = await Fetch.fetch(
     config.tokenEndpoint,
-    Fetch.RequestInit.make(
-      ~method_=#POST,
-      ~headers=Fetch.HeadersInit.make({"Content-Type": "application/x-www-form-urlencoded"}),
-      ~body=body,
-      ()
-    )
+    {
+      "method": "POST",
+      "headers": {"Content-Type": "application/x-www-form-urlencoded"},
+      "body": body,
+    }
   )
 
-  if !response.ok {
-    let error = await response.text()
+  if !Fetch.Response.ok(response) {
+    let error = await Fetch.Response.text(response)
     raise(Js.Exn.raiseError(`Token refresh failed: ${error}`))
   }
 
-  let json = await response.json()
+  let json = await Fetch.Response.json(response)
   let obj = json->Js.Json.decodeObject->Belt.Option.getExn
 
   {
@@ -134,20 +132,20 @@ let refreshToken = async (config: oauth2Config, refreshToken: string): tokenResp
 
 // Get user info from OIDC provider
 let getUserInfo = async (config: oidcConfig, accessToken: string): Js.Json.t => {
-  let response = await Fetch.fetchWithInit(
+  let response = await Fetch.fetch(
     config.userInfoEndpoint,
-    Fetch.RequestInit.make(
-      ~headers=Fetch.HeadersInit.make({"Authorization": `Bearer ${accessToken}`}),
-      ()
-    )
+    {
+      "method": "GET",
+      "headers": {"Authorization": "Bearer " ++ accessToken},
+    }
   )
 
-  if !response.ok {
-    let error = await response.text()
+  if !Fetch.Response.ok(response) {
+    let error = await Fetch.Response.text(response)
     raise(Js.Exn.raiseError(`User info request failed: ${error}`))
   }
 
-  await response.json()
+  await Fetch.Response.json(response)
 }
 
 // Logout (end OIDC session)
@@ -183,15 +181,14 @@ let generateState = (): string => {
   let array = Js.TypedArray2.Uint8Array.fromLength(32)
   getRandomValues(array)
 
-  Belt.Array.reduceWithIndex(
-    Js.TypedArray2.Uint8Array.slice(array, ~start=0, ~end_=32),
-    "",
-    (acc, byte, _) => {
-      let hex = Js.Int.toStringWithRadix(byte, ~radix=16)
-      let padded = Js.String2.padStart(hex, 2, "0")
-      acc ++ padded
-    }
-  )
+  let result = ref("")
+  for i in 0 to 31 {
+    let byte = Js.TypedArray2.Uint8Array.unsafe_get(array, i)
+    let hex = Js.Int.toStringWithRadix(byte, ~radix=16)
+    let padded = %raw(`hex.padStart(2, "0")`)
+    result := result.contents ++ padded
+  }
+  result.contents
 }
 
 // Generate secure nonce for OIDC
@@ -221,22 +218,21 @@ let clientCredentials = async (
     })
     ->Belt.Array.joinWith("&", x => x)
 
-  let response = await Fetch.fetchWithInit(
+  let response = await Fetch.fetch(
     config.tokenEndpoint,
-    Fetch.RequestInit.make(
-      ~method_=#POST,
-      ~headers=Fetch.HeadersInit.make({"Content-Type": "application/x-www-form-urlencoded"}),
-      ~body=body,
-      ()
-    )
+    {
+      "method": "POST",
+      "headers": {"Content-Type": "application/x-www-form-urlencoded"},
+      "body": body,
+    }
   )
 
-  if !response.ok {
-    let error = await response.text()
+  if !Fetch.Response.ok(response) {
+    let error = await Fetch.Response.text(response)
     raise(Js.Exn.raiseError(`Client credentials flow failed: ${error}`))
   }
 
-  let json = await response.json()
+  let json = await Fetch.Response.json(response)
   let obj = json->Js.Json.decodeObject->Belt.Option.getExn
 
   {
@@ -265,27 +261,26 @@ let introspectToken = async (
     })
     ->Belt.Array.joinWith("&", x => x)
 
-  let auth = Js.Global.btoa(`${clientId}:${clientSecret}`)
+  let auth = %raw(`btoa(clientId + ":" + clientSecret)`)
 
-  let response = await Fetch.fetchWithInit(
+  let response = await Fetch.fetch(
     introspectionEndpoint,
-    Fetch.RequestInit.make(
-      ~method_=#POST,
-      ~headers=Fetch.HeadersInit.make({
+    {
+      "method": "POST",
+      "headers": {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": `Basic ${auth}`,
-      }),
-      ~body=body,
-      ()
-    )
+        "Authorization": "Basic " ++ auth,
+      },
+      "body": body,
+    }
   )
 
-  if !response.ok {
-    let status = response.status->Belt.Int.toString
+  if !Fetch.Response.ok(response) {
+    let status = Fetch.Response.status(response)->Belt.Int.toString
     raise(Js.Exn.raiseError(`Token introspection failed: ${status}`))
   }
 
-  await response.json()
+  await Fetch.Response.json(response)
 }
 
 // Token revocation (RFC 7009)
@@ -311,23 +306,22 @@ let revokeToken = async (
     })
     ->Belt.Array.joinWith("&", x => x)
 
-  let auth = Js.Global.btoa(`${clientId}:${clientSecret}`)
+  let auth = %raw(`btoa(clientId + ":" + clientSecret)`)
 
-  let response = await Fetch.fetchWithInit(
+  let response = await Fetch.fetch(
     revocationEndpoint,
-    Fetch.RequestInit.make(
-      ~method_=#POST,
-      ~headers=Fetch.HeadersInit.make({
+    {
+      "method": "POST",
+      "headers": {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": `Basic ${auth}`,
-      }),
-      ~body=body,
-      ()
-    )
+        "Authorization": "Basic " ++ auth,
+      },
+      "body": body,
+    }
   )
 
-  if !response.ok {
-    let status = response.status->Belt.Int.toString
+  if !Fetch.Response.ok(response) {
+    let status = Fetch.Response.status(response)->Belt.Int.toString
     raise(Js.Exn.raiseError(`Token revocation failed: ${status}`))
   }
 }

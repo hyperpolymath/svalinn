@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Authentication middleware for Svalinn
 
-open Types
+open AuthTypes
 
 // Create authentication middleware
 let authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
@@ -38,15 +38,18 @@ let authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
           if index >= Belt.Array.length(methods) {
             Promise.resolve()
           } else {
-            let method = methods->Belt.Array.get(index)->Belt.Option.getExn
-            tryAuthenticate(c, config, method)->Promise.then(r => {
-              if r.authenticated {
-                result := r
-                Promise.resolve()
-              } else {
-                tryMethods(methods, index + 1)
-              }
-            })
+            switch methods->Belt.Array.get(index) {
+            | Some(method) =>
+              tryAuthenticate(c, config, method)->Promise.then(r => {
+                if r.authenticated {
+                  result := r
+                  Promise.resolve()
+                } else {
+                  tryMethods(methods, index + 1)
+                }
+              })
+            | None => Promise.resolve() // Should never happen due to bounds check, but safe
+            }
           }
         }
 
@@ -139,9 +142,19 @@ and authenticateBearerToken = async (
         let payload = switch config.oidc {
         | Some(oidcConfig) => await JWT.verifyJWT(token, oidcConfig)
         | None => {
-            // Basic decode (for dev/testing)
-            let (_, payload) = JWT.decodeJWT(token)
-            payload
+            // SECURITY: Never accept unverified tokens in production
+            let env = getEnv("DENO_ENV")
+            switch env {
+            | Some("development") | Some("test") => {
+                %raw(`console.warn("INSECURE: Using unverified JWT decode (dev/test only)")`)
+                let (_, payload) = JWT.decodeJWT(token)
+                payload
+              }
+            | _ => {
+                // Production or unset - require OIDC config
+                raise(Js.Exn.raiseError("OIDC configuration required in production - cannot verify JWT"))
+              }
+            }
           }
         }
 

@@ -80,15 +80,14 @@ let rec callWithRetry = async (
     let controller = %raw(`new AbortController()`)
     let timeoutId = %raw(`setTimeout(() => controller.abort(), config.timeout)`)
 
-    let response = await Fetch.fetchWithInit(
+    let response = await Fetch.fetch(
       config.endpoint,
-      Fetch.RequestInit.make(
-        ~method_=#POST,
-        ~headers=Fetch.HeadersInit.make({"Content-Type": "application/json"}),
-        ~body=Js.Json.stringify(requestBody),
-        ~signal=%raw(`controller.signal`),
-        ()
-      )
+      {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": Js.Json.stringify(requestBody),
+        "signal": %raw(`controller.signal`),
+      }
     )
 
     %raw(`clearTimeout(timeoutId)`)
@@ -166,7 +165,7 @@ module Container = {
     config: config,
     ~image: string,
     ~name: option<string>=?,
-    ~config: option<Js.Json.t>=?,
+    ~containerConfig: option<Js.Json.t>=?,
     ()
   ): Js.Json.t => {
     let paramsDict = [("image", Js.Json.string(image))]
@@ -176,7 +175,7 @@ module Container = {
     | None => paramsDict
     }
 
-    let paramsDict = switch config {
+    let paramsDict = switch containerConfig {
     | Some(c) => Belt.Array.concat(paramsDict, [("config", c)])
     | None => paramsDict
     }

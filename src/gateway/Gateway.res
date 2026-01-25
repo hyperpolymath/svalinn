@@ -207,14 +207,31 @@ let requestLogger = (): Hono.middleware<'env, 'path> => {
   }
 }
 
-// CORS middleware
+// CORS middleware - SECURITY: Only allow whitelisted origins
 let cors = (): Hono.middleware<'env, 'path> => {
   async (c, next) => {
-    Hono.Context.header(c, "Access-Control-Allow-Origin", "*")
-    Hono.Context.header(c, "Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-    Hono.Context.header(c, "Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
+    // Get allowed origins from environment (comma-separated list)
+    let allowedOriginsStr = Deno.env.get("ALLOWED_ORIGINS")
+    let allowedOrigins = switch allowedOriginsStr {
+    | Some(str) if str != "" => Js.String2.split(str, ",")
+    | _ => [] // Default: no origins allowed (most secure)
+    }
 
     let req = Hono.Context.req(c)
+    let origin = Hono.Request.header(req, "Origin")
+
+    // Only set CORS headers if origin is in whitelist
+    switch origin {
+    | Some(requestOrigin) =>
+      if Belt.Array.some(allowedOrigins, allowed => allowed == requestOrigin) {
+        Hono.Context.header(c, "Access-Control-Allow-Origin", requestOrigin)
+        Hono.Context.header(c, "Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        Hono.Context.header(c, "Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
+        Hono.Context.header(c, "Access-Control-Allow-Credentials", "true")
+      } // else: Don't set CORS headers for untrusted origins
+    | None => () // No origin header, likely same-origin request
+    }
+
     if Hono.Request.method_(req) == "OPTIONS" {
       Hono.Context.text(c, "", ~status=204, ())
     } else {

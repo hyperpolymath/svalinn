@@ -35,7 +35,7 @@ type runRequest = {
   imageDigest: string,
   name: option<string>,
   command: option<array<string>>,
-  env: option<Dict.t<string>>,
+  env: option<Js.Dict.t<string>>,
   detach: option<bool>,
   removeOnExit: option<bool>,
   profile: option<string>,
@@ -48,22 +48,28 @@ type verifyRequest = {
   checkSignature: option<bool>,
 }
 
+// SBOM information
+type sbomInfo = {
+  format: string,
+  vulnerabilities: int,
+  critical: int,
+  high: int,
+}
+
+// Signature information
+type signatureInfo = {
+  valid: bool,
+  signer: option<string>,
+  timestamp: option<string>,
+}
+
 // Verification result
 type verificationResult = {
   verified: bool,
   imageRef: string,
   digest: string,
-  sbom: option<{
-    format: string,
-    vulnerabilities: int,
-    critical: int,
-    high: int,
-  }>,
-  signature: option<{
-    valid: bool,
-    signer: option<string>,
-    timestamp: option<string>,
-  }>,
+  sbom: option<sbomInfo>,
+  signature: option<signatureInfo>,
 }
 
 // Health check response
@@ -78,7 +84,7 @@ type healthResponse = {
 type errorResponse = {
   code: string,
   message: string,
-  details: option<JSON.t>,
+  details: option<Js.Json.t>,
 }
 
 // API response wrapper

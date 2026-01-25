@@ -42,7 +42,7 @@ type validationResult = {
 // Schema registry
 type t = {
   ajv: Ajv.t,
-  schemas: Map.String.t<Js.Json.t>,
+  schemas: Belt.Map.String.t<Js.Json.t>,
 }
 
 // Create validator instance
@@ -55,7 +55,7 @@ let make = (): t => {
 
   {
     ajv,
-    schemas: Map.String.empty,
+    schemas: Belt.Map.String.empty,
   }
 }
 
@@ -71,13 +71,13 @@ let loadSchema = async (validator: t, schemaPath: string, schemaId: string): t =
     let _ = validator.ajv->Ajv.addSchema(schema, schemaId)
 
     // Store in map
-    let schemas = Map.String.set(validator.schemas, schemaId, schema)
+    let schemas = Belt.Map.String.set(validator.schemas, schemaId, schema)
 
     {...validator, schemas}
   } catch {
   | Js.Exn.Error(e) => {
       let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Unknown error")
-      Js.Console.error(\`Failed to load schema \${schemaId} from \${schemaPath}: \${message}\`)
+      Js.Console.error("Failed to load schema " ++ schemaId ++ " from " ++ schemaPath ++ ": " ++ message)
       validator
     }
   }
@@ -104,7 +104,7 @@ let loadStandardSchemas = async (validator: t): t => {
       v
     } else {
       let (filename, schemaId) = remaining->Belt.Array.get(index)->Belt.Option.getExn
-      let path = \`\${schemaDir}/\${filename}\`
+      let path = schemaDir ++ "/" ++ filename
       let v2 = await loadSchema(v, path, schemaId)
       await loadSchemas(v2, remaining, index + 1)
     }
@@ -124,7 +124,7 @@ let validate = (validator: t, schemaId: string, data: Js.Json.t): validationResu
           dataPath: "",
           schemaPath: "",
           params: Js.Json.null,
-          message: Some(\`Schema '\${schemaId}' not found\`),
+          message: Some("Schema '" ++ schemaId ++ "' not found"),
         },
       ]),
     }

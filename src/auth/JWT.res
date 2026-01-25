@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // JWT verification for Svalinn
 
-open Types
+open AuthTypes
 
 // JWKS key structure
 type jwk = {
@@ -48,13 +48,13 @@ let fetchJWKS = async (jwksUri: string): jwks => {
   | Some(cached) if cached.expiresAt > Js.Date.now() => cached.jwks
   | _ => {
       // Fetch JWKS
-      let response = await Fetch.fetch(jwksUri)
-      if !response.ok {
-        let status = response.status->Belt.Int.toString
+      let response = await Fetch.fetch(jwksUri, {"method": "GET"})
+      if !Fetch.Response.ok(response) {
+        let status = Fetch.Response.status(response)->Belt.Int.toString
         raise(Js.Exn.raiseError(`Failed to fetch JWKS: ${status}`))
       }
 
-      let json = await response.json()
+      let json = await Fetch.Response.json(response)
       let jwks = json->Js.Json.decodeObject
         ->Belt.Option.flatMap(obj => obj->Js.Dict.get("keys"))
         ->Belt.Option.flatMap(Js.Json.decodeArray)
@@ -95,7 +95,7 @@ let base64UrlDecode = (str: string): Js.TypedArray2.Uint8Array.t => {
     ->Js.String2.replaceByRe(%re("/_/g"), "/")
 
   let padding = Js.String2.repeat("=", (4 - mod(Js.String2.length(base64), 4)) |> mod(_, 4))
-  let binary = (base64 ++ padding)->Js.Global.atob
+  let binary = %raw(`atob(base64 + padding)`)
 
   let bytes = Js.TypedArray2.Uint8Array.fromLength(Js.String2.length(binary))
   for i in 0 to Js.String2.length(binary) - 1 {
@@ -106,14 +106,15 @@ let base64UrlDecode = (str: string): Js.TypedArray2.Uint8Array.t => {
 
 // Base64 URL encode
 let base64UrlEncode = (bytes: Js.TypedArray2.Uint8Array.t): string => {
-  let binary = Belt.Array.reduceWithIndex(
-    Js.TypedArray2.Uint8Array.slice(bytes, ~start=0, ~end_=Js.TypedArray2.Uint8Array.length(bytes)),
-    "",
-    (acc, byte, _) => acc ++ Js.String2.fromCharCode(byte)
-  )
-  Js.Global.btoa(binary)
+  let len = Js.TypedArray2.Uint8Array.length(bytes)
+  let binary = ref("")
+  for i in 0 to len - 1 {
+    binary := binary.contents ++ Js.String2.fromCharCode(Js.TypedArray2.Uint8Array.unsafe_get(bytes, i))
+  }
+  %raw(`btoa(binary.contents)`)
     ->Js.String2.replaceByRe(%re("/\\+/g"), "-")
-    ->Js.String2.replaceByRe(%re("/\\//g"), "_")
+    ->Js.String2.split("/")
+    ->Js.Array2.joinWith("_")
     ->Js.String2.replaceByRe(%re("/=/g"), "")
 }
 
@@ -121,41 +122,76 @@ let base64UrlEncode = (bytes: Js.TypedArray2.Uint8Array.t): string => {
 let decodeJWT = (token: string): (jwtHeader, tokenPayload) => {
   let parts = Js.String2.split(token, ".")
   if Js.Array2.length(parts) != 3 {
-    raise(Js.Exn.raiseError("Invalid JWT format"))
+    raise(Js.Exn.raiseError("Invalid JWT format: expected 3 parts"))
   }
 
-  let headerStr = parts[0]->Belt.Option.getExn->base64UrlDecode
-  let payloadStr = parts[1]->Belt.Option.getExn->base64UrlDecode
+  let headerStr = switch Belt.Array.get(parts, 0) {
+  | Some(h) => base64UrlDecode(h)
+  | None => raise(Js.Exn.raiseError("Invalid JWT: missing header"))
+  }
+
+  let payloadStr = switch Belt.Array.get(parts, 1) {
+  | Some(p) => base64UrlDecode(p)
+  | None => raise(Js.Exn.raiseError("Invalid JWT: missing payload"))
+  }
 
   // Convert Uint8Array to string
-  let headerJson = Belt.Array.reduceWithIndex(
-    Js.TypedArray2.Uint8Array.slice(headerStr, ~start=0, ~end_=Js.TypedArray2.Uint8Array.length(headerStr)),
-    "",
-    (acc, byte, _) => acc ++ Js.String2.fromCharCode(byte)
-  )->Js.Json.parseExn
+  let headerLen = Js.TypedArray2.Uint8Array.length(headerStr)
+  let headerString = ref("")
+  for i in 0 to headerLen - 1 {
+    headerString := headerString.contents ++ Js.String2.fromCharCode(Js.TypedArray2.Uint8Array.unsafe_get(headerStr, i))
+  }
+  let headerJson = Js.Json.parseExn(headerString.contents)
 
-  let payloadJson = Belt.Array.reduceWithIndex(
-    Js.TypedArray2.Uint8Array.slice(payloadStr, ~start=0, ~end_=Js.TypedArray2.Uint8Array.length(payloadStr)),
-    "",
-    (acc, byte, _) => acc ++ Js.String2.fromCharCode(byte)
-  )->Js.Json.parseExn
+  let payloadLen = Js.TypedArray2.Uint8Array.length(payloadStr)
+  let payloadString = ref("")
+  for i in 0 to payloadLen - 1 {
+    payloadString := payloadString.contents ++ Js.String2.fromCharCode(Js.TypedArray2.Uint8Array.unsafe_get(payloadStr, i))
+  }
+  let payloadJson = Js.Json.parseExn(payloadString.contents)
 
   // Parse header
-  let headerObj = headerJson->Js.Json.decodeObject->Belt.Option.getExn
+  let headerObj = switch headerJson->Js.Json.decodeObject {
+  | Some(obj) => obj
+  | None => raise(Js.Exn.raiseError("Invalid JWT: header is not an object"))
+  }
+
   let header = {
-    alg: headerObj->Js.Dict.get("alg")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
+    alg: switch headerObj->Js.Dict.get("alg")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(a) => a
+    | None => raise(Js.Exn.raiseError("Invalid JWT: missing required 'alg' field in header"))
+    },
     typ: headerObj->Js.Dict.get("typ")->Belt.Option.flatMap(Js.Json.decodeString),
     kid: headerObj->Js.Dict.get("kid")->Belt.Option.flatMap(Js.Json.decodeString),
   }
 
   // Parse payload
-  let payloadObj = payloadJson->Js.Json.decodeObject->Belt.Option.getExn
+  let payloadObj = switch payloadJson->Js.Json.decodeObject {
+  | Some(obj) => obj
+  | None => raise(Js.Exn.raiseError("Invalid JWT: payload is not an object"))
+  }
+
   let payload = {
-    sub: payloadObj->Js.Dict.get("sub")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    iss: payloadObj->Js.Dict.get("iss")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    aud: payloadObj->Js.Dict.get("aud")->Belt.Option.getExn,
-    exp: payloadObj->Js.Dict.get("exp")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt)->Belt.Option.getExn,
-    iat: payloadObj->Js.Dict.get("iat")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt)->Belt.Option.getExn,
+    sub: switch payloadObj->Js.Dict.get("sub")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(s) => s
+    | None => raise(Js.Exn.raiseError("Invalid JWT: missing required 'sub' field"))
+    },
+    iss: switch payloadObj->Js.Dict.get("iss")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(i) => i
+    | None => raise(Js.Exn.raiseError("Invalid JWT: missing required 'iss' field"))
+    },
+    aud: switch payloadObj->Js.Dict.get("aud") {
+    | Some(a) => a
+    | None => raise(Js.Exn.raiseError("Invalid JWT: missing required 'aud' field"))
+    },
+    exp: switch payloadObj->Js.Dict.get("exp")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt) {
+    | Some(e) => e
+    | None => raise(Js.Exn.raiseError("Invalid JWT: missing required 'exp' field"))
+    },
+    iat: switch payloadObj->Js.Dict.get("iat")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt) {
+    | Some(i) => i
+    | None => raise(Js.Exn.raiseError("Invalid JWT: missing required 'iat' field"))
+    },
     scope: payloadObj->Js.Dict.get("scope")->Belt.Option.flatMap(Js.Json.decodeString),
     email: payloadObj->Js.Dict.get("email")->Belt.Option.flatMap(Js.Json.decodeString),
     name: payloadObj->Js.Dict.get("name")->Belt.Option.flatMap(Js.Json.decodeString),
@@ -249,10 +285,24 @@ let importJWK = async (jwk: jwk, alg: string): 'cryptoKey => {
 // Verify JWT signature
 let verifySignature = async (token: string, key: 'cryptoKey, algorithm: algorithm): bool => {
   let parts = Js.String2.split(token, ".")
-  let data = (parts[0]->Belt.Option.getExn ++ "." ++ parts[1]->Belt.Option.getExn)
-    ->Js.String2.castToArrayLike
-    ->Js.TypedArray2.Uint8Array.fromArray
-  let signature = parts[2]->Belt.Option.getExn->base64UrlDecode
+
+  let part0 = switch Belt.Array.get(parts, 0) {
+  | Some(p) => p
+  | None => raise(Js.Exn.raiseError("Invalid JWT: missing header for signature verification"))
+  }
+
+  let part1 = switch Belt.Array.get(parts, 1) {
+  | Some(p) => p
+  | None => raise(Js.Exn.raiseError("Invalid JWT: missing payload for signature verification"))
+  }
+
+  let dataStr = part0 ++ "." ++ part1
+  let data = %raw(`new TextEncoder().encode(dataStr)`)
+
+  let signature = switch Belt.Array.get(parts, 2) {
+  | Some(sig) => base64UrlDecode(sig)
+  | None => raise(Js.Exn.raiseError("Invalid JWT: missing signature"))
+  }
 
   let algorithmObj = switch algorithm {
   | RSA_PKCS1(hash) => {
@@ -333,13 +383,13 @@ let discoverOIDC = async (issuer: string): oidcConfig => {
     ->Js.String2.replaceByRe(%re("/\/$/"), "")
     ++ "/.well-known/openid-configuration"
 
-  let response = await Fetch.fetch(wellKnown)
-  if !response.ok {
-    let status = response.status->Belt.Int.toString
+  let response = await Fetch.fetch(wellKnown, {"method": "GET"})
+  if !Fetch.Response.ok(response) {
+    let status = Fetch.Response.status(response)->Belt.Int.toString
     raise(Js.Exn.raiseError(`OIDC discovery failed: ${status}`))
   }
 
-  let config = await response.json()
+  let config = await Fetch.Response.json(response)
   let obj = config->Js.Json.decodeObject->Belt.Option.getExn
 
   {
