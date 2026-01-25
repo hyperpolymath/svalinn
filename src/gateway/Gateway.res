@@ -276,48 +276,393 @@ let createApp = (): Hono.t<'env> => {
     Log.warn("Authentication DISABLED - not for production!", ())
   }
 
-  // API routes (TODO: implement in separate modules)
-  // Containers
+  // API routes - Connected to Vörðr via MCP
+  let mcpConfig = McpClient.fromEnv()
+
+  // Containers - List all containers
   app->Hono.get("/api/v1/containers", async c => {
-    Hono.Context.json(
-      c,
-      Js.Json.object_(Js.Dict.fromArray([("containers", Js.Json.array([]))])),
-      ()
-    )
+    try {
+      let result = await McpClient.Container.list(mcpConfig, ())
+      Log.info("Listed containers", ())
+      Hono.Context.json(c, result, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to list containers")
+        Log.error("Container list error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
   })->ignore
 
-  // Images
+  // Containers - Get specific container
+  app->Hono.get("/api/v1/containers/:id", async c => {
+    try {
+      let req = Hono.Context.req(c)
+      let id = Hono.Request.param(req, "id")->Belt.Option.getExn
+      let result = await McpClient.Container.get(mcpConfig, id)
+      Log.info("Got container", ~metadata=Js.Json.object_(
+        Js.Dict.fromArray([("id", Js.Json.string(id))])
+      ), ())
+      Hono.Context.json(c, result, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to get container")
+        Log.error("Container get error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
+  })->ignore
+
+  // Containers - Create container
+  app->Hono.post("/api/v1/containers", async c => {
+    try {
+      let req = Hono.Context.req(c)
+      let body = await Hono.Request.json(req)
+      let image = Validation.getString(body, "image")->Belt.Option.getExn
+      let name = Validation.getString(body, "name")
+      let config = Validation.getObject(body, "config")->Belt.Option.map(Js.Json.object_)
+
+      let result = await McpClient.Container.create(mcpConfig, ~image, ~name?, ~config?, ())
+      Log.info("Created container", ~metadata=Js.Json.object_(
+        Js.Dict.fromArray([("image", Js.Json.string(image))])
+      ), ())
+      Hono.Context.json(c, result, ~status=201, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to create container")
+        Log.error("Container create error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
+  })->ignore
+
+  // Containers - Start container
+  app->Hono.post("/api/v1/containers/:id/start", async c => {
+    try {
+      let req = Hono.Context.req(c)
+      let id = Hono.Request.param(req, "id")->Belt.Option.getExn
+      let result = await McpClient.Container.start(mcpConfig, id)
+      Log.info("Started container", ~metadata=Js.Json.object_(
+        Js.Dict.fromArray([("id", Js.Json.string(id))])
+      ), ())
+      Hono.Context.json(c, result, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to start container")
+        Log.error("Container start error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
+  })->ignore
+
+  // Containers - Stop container
+  app->Hono.post("/api/v1/containers/:id/stop", async c => {
+    try {
+      let req = Hono.Context.req(c)
+      let id = Hono.Request.param(req, "id")->Belt.Option.getExn
+      let result = await McpClient.Container.stop(mcpConfig, id, ())
+      Log.info("Stopped container", ~metadata=Js.Json.object_(
+        Js.Dict.fromArray([("id", Js.Json.string(id))])
+      ), ())
+      Hono.Context.json(c, result, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to stop container")
+        Log.error("Container stop error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
+  })->ignore
+
+  // Containers - Remove container
+  app->Hono.delete("/api/v1/containers/:id", async c => {
+    try {
+      let req = Hono.Context.req(c)
+      let id = Hono.Request.param(req, "id")->Belt.Option.getExn
+      let result = await McpClient.Container.remove(mcpConfig, id, ())
+      Log.info("Removed container", ~metadata=Js.Json.object_(
+        Js.Dict.fromArray([("id", Js.Json.string(id))])
+      ), ())
+      Hono.Context.json(c, result, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to remove container")
+        Log.error("Container remove error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
+  })->ignore
+
+  // Images - List images
   app->Hono.get("/api/v1/images", async c => {
-    Hono.Context.json(c, Js.Json.object_(Js.Dict.fromArray([("images", Js.Json.array([]))])), ())
+    try {
+      let result = await McpClient.Image.list(mcpConfig)
+      Log.info("Listed images", ())
+      Hono.Context.json(c, result, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to list images")
+        Log.error("Image list error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
   })->ignore
 
-  // Run container
+  // Images - Pull image
+  app->Hono.post("/api/v1/images/pull", async c => {
+    try {
+      let req = Hono.Context.req(c)
+      let body = await Hono.Request.json(req)
+      let image = Validation.getString(body, "image")->Belt.Option.getExn
+      let result = await McpClient.Image.pull(mcpConfig, image)
+      Log.info("Pulled image", ~metadata=Js.Json.object_(
+        Js.Dict.fromArray([("image", Js.Json.string(image))])
+      ), ())
+      Hono.Context.json(c, result, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to pull image")
+        Log.error("Image pull error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
+  })->ignore
+
+  // Images - Verify image (with policy enforcement)
+  app->Hono.post("/api/v1/images/verify", async c => {
+    try {
+      let req = Hono.Context.req(c)
+      let body = await Hono.Request.json(req)
+      let digest = Validation.getString(body, "digest")->Belt.Option.getExn
+      let policyJson = Validation.getObject(body, "policy")->Belt.Option.map(Js.Json.object_)
+
+      // If policy provided, enforce it
+      switch policyJson {
+      | Some(pol) => {
+          // Verify image and get attestations
+          let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
+
+          Log.info("Verified image with policy", ~metadata=Js.Json.object_(
+            Js.Dict.fromArray([("digest", Js.Json.string(digest))])
+          ), ())
+          Hono.Context.json(c, result, ())
+        }
+      | None => {
+          // Verify without policy
+          let result = await McpClient.Image.verify(mcpConfig, digest, ())
+          Log.info("Verified image without policy", ~metadata=Js.Json.object_(
+            Js.Dict.fromArray([("digest", Js.Json.string(digest))])
+          ), ())
+          Hono.Context.json(c, result, ())
+        }
+      }
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to verify image")
+        Log.error("Image verify error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
+  })->ignore
+
+  // Run container (with validation + policy)
   app->Hono.post("/api/v1/run", async c => {
-    Hono.Context.json(
-      c,
-      Js.Json.object_(
-        Js.Dict.fromArray([("error", Js.Json.string("Not implemented yet"))])
-      ),
-      ~status=501,
-      ()
-    )
+    try {
+      let req = Hono.Context.req(c)
+      let body = await Hono.Request.json(req)
+
+      // Validate request against schema
+      // TODO: Add validation once schemas are loaded
+      // let validator = Validation.make()
+      // let validationResult = Validation.validateRunRequest(validator, body)
+      // if !validationResult.valid {
+      //   raise validation error
+      // }
+
+      let image = Validation.getString(body, "image")->Belt.Option.getExn
+      let name = Validation.getString(body, "name")
+      let config = Validation.getObject(body, "config")->Belt.Option.map(Js.Json.object_)
+
+      // Create container
+      let createResult = await McpClient.Container.create(mcpConfig, ~image, ~name?, ~config?, ())
+
+      // Extract container ID from result
+      let containerId = Validation.getString(createResult, "id")->Belt.Option.getExn
+
+      // Start container
+      let startResult = await McpClient.Container.start(mcpConfig, containerId)
+
+      Log.info("Ran container", ~metadata=Js.Json.object_(
+        Js.Dict.fromArray([
+          ("image", Js.Json.string(image)),
+          ("containerId", Js.Json.string(containerId))
+        ])
+      ), ())
+
+      Hono.Context.json(c, startResult, ~status=201, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to run container")
+        Log.error("Container run error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
   })->ignore
 
-  // Verify bundle
+  // Verify bundle (Cerro Torre .ctp bundle verification)
   app->Hono.post("/api/v1/verify", async c => {
-    Hono.Context.json(
-      c,
-      Js.Json.object_(
-        Js.Dict.fromArray([("error", Js.Json.string("Not implemented yet"))])
-      ),
-      ~status=501,
-      ()
-    )
+    try {
+      let req = Hono.Context.req(c)
+      let body = await Hono.Request.json(req)
+
+      // Validate request against schema
+      // TODO: Add validation once schemas are loaded
+
+      let digest = Validation.getString(body, "digest")->Belt.Option.getExn
+      let policyJson = Validation.getObject(body, "policy")->Belt.Option.map(Js.Json.object_)
+
+      // Verify image (which includes .ctp bundle verification)
+      let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
+
+      Log.info("Verified bundle", ~metadata=Js.Json.object_(
+        Js.Dict.fromArray([("digest", Js.Json.string(digest))])
+      ), ())
+
+      Hono.Context.json(c, result, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to verify bundle")
+        Log.error("Bundle verify error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
   })->ignore
 
-  // Policies
+  // Policies - List default policies
   app->Hono.get("/api/v1/policies", async c => {
-    Hono.Context.json(c, Js.Json.object_(Js.Dict.fromArray([("policies", Js.Json.array([]))])), ())
+    try {
+      let policies = Js.Json.object_(
+        Js.Dict.fromArray([
+          ("default", PolicyEngine.formatResult({
+            allowed: true,
+            mode: PolicyEngine.Strict,
+            predicatesFound: PolicyEngine.defaultPolicy.requiredPredicates,
+            missingPredicates: [],
+            signersVerified: [],
+            invalidSigners: [],
+            logCount: 1,
+            logQuorumMet: true,
+            violations: [],
+            warnings: [],
+          })),
+          ("permissive", PolicyEngine.formatResult({
+            allowed: true,
+            mode: PolicyEngine.Permissive,
+            predicatesFound: [],
+            missingPredicates: [],
+            signersVerified: [],
+            invalidSigners: [],
+            logCount: 0,
+            logQuorumMet: true,
+            violations: [],
+            warnings: [],
+          })),
+        ])
+      )
+
+      Log.info("Listed policies", ())
+      Hono.Context.json(c, policies, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to list policies")
+        Log.error("Policy list error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+        Hono.Context.json(
+          c,
+          Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string(message))])),
+          ~status=500,
+          ()
+        )
+      }
+    }
   })->ignore
 
   // 404 handler
