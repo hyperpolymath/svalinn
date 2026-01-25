@@ -91,20 +91,39 @@
 - compose.v1.json
 - doctor-report.v1.json
 
-### 3. Add Policy Enforcement
-**Status:** Module ready, needs wiring
-- Load default policy or from config
-- Evaluate before verify/run operations
-- Return 403 if policy denies (strict mode)
-- Log warnings if policy violations (permissive mode)
+### 3. Add Policy Enforcement ✅ COMPLETE
+**Status:** ✅ Implemented (2026-01-25)
+**Files updated:**
+- `src/gateway/Gateway.res` - Policy validation
 
-### 4. Test Auth Middleware
-**Status:** Integrated but untested
-- Test OAuth2/OIDC flow (requires OIDC provider or mock)
-- Test API key authentication
-- Test mTLS authentication
-- Test scope-based authorization
-- Test group-based authorization
+**Implementation:**
+- ✅ Validate policy format using PolicyEngine.validatePolicy
+- ✅ Return 400 with detailed errors for malformed policies
+- ✅ POST /api/v1/images/verify validates policy before sending to Vörðr
+- ✅ POST /api/v1/verify validates policy before sending to Vörðr
+- ✅ Policy enforcement delegated to Vörðr (has access to attestations)
+
+**Architecture Decision:**
+- **Gateway role:** Validates policy format only (client-side validation)
+- **Vörðr role:** Enforces policies and evaluates attestations (server-side enforcement)
+- **Rationale:** Single source of truth, avoids duplicating policy evaluation logic
+- **Benefit:** Catches malformed policies early, reduces unnecessary MCP calls
+
+### 4. Test Auth Middleware ⏳ TODO
+**Status:** ⏳ Deferred (requires external OIDC provider setup)
+**Middleware:** ✅ Implemented (430 lines, commit c91b629)
+**Testing needed:**
+- ⏳ Test OAuth2/OIDC flow (requires OIDC provider or mock)
+- ⏳ Test API key authentication (requires API key generation)
+- ⏳ Test mTLS authentication (requires client certificates)
+- ⏳ Test scope-based authorization
+- ⏳ Test group-based authorization
+
+**Current status:**
+- Middleware code complete and integrated
+- Can be enabled via AUTH_ENABLED=true environment variable
+- Needs real OIDC provider (e.g., Auth0, Keycloak) or mock for testing
+- Integration tests created but not yet run (tests/integration_test.res)
 
 ## Sealing (Planned)
 
