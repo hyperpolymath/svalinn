@@ -60,14 +60,18 @@
        (language-policy . "rescript-only")))
     (design-rationale
       ((why-rescript-not-typescript
-         . "Compile-time type safety with sound type system. TypeScript types erased at runtime.")
+         . "Compile-time type safety with sound type system. TypeScript types erased at runtime. BANNED per CLAUDE.md language policy.")
        (why-deno-not-node
-         . "Secure by default, no node_modules, explicit permissions, native TypeScript support.")
+         . "Secure by default, no node_modules, explicit permissions, web standard APIs. No npm/Bun per CLAUDE.md.")
        (why-hono-not-express
-         . "Edge-first design, faster than Express, better TypeScript support, Deno compatible.")
+         . "Edge-first design, faster than Express, better ReScript bindings, Deno compatible.")
        (why-mcp-not-grpc
          . "AI assistant ecosystem compatibility, simpler than gRPC, JSON-RPC 2.0 based.")
        (why-gateway-pattern
          . "Separates HTTP concerns from container runtime, allows other runtimes to use Vörðr.")
        (why-policy-at-runtime
-         . "Runtime has access to attestations and image metadata, gateway only validates format.")))))
+         . "Runtime has access to attestations and image metadata, gateway only validates format.")
+       (why-res-js-not-bs-js
+         . "BuckleScript naming deprecated in ReScript 11+. Modern .res.js aligns with ecosystem standards.")
+       (why-delete-typescript
+         . "Language policy violation. 30 TS files (8,309 lines) removed. ReScript provides same functionality with better type safety.")))))

@@ -13,7 +13,7 @@ dev:
 
 serve:
     @echo "🛡️  Starting Svalinn production server"
-    cd src && deno run --allow-net --allow-read --allow-env Main.bs.js
+    cd src && deno run --allow-net --allow-read --allow-env Main.res.js
 
 # --- Build ---
 build-res:
@@ -22,7 +22,7 @@ build-res:
 
 build:
     @echo "📦 Building compiled binary (Deno)"
-    cd src && deno compile --allow-net --allow-read --allow-env -o ../dist/svalinn Main.bs.js
+    cd src && deno compile --allow-net --allow-read --allow-env -o ../dist/svalinn Main.res.js
 
 build-ui:
     @echo "🎨 Building UI (ReScript)"

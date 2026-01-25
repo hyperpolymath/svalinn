@@ -3,13 +3,13 @@
   "version": "0.2.0",
   "license": "PMPL-1.0-or-later",
   "exports": {
-    ".": "./Main.bs.js"
+    ".": "./Main.res.js"
   },
   "tasks": {
-    "dev": "deno run --allow-net --allow-read --allow-env --watch Main.bs.js",
-    "start": "deno run --allow-net --allow-read --allow-env Main.bs.js",
-    "serve": "deno run --allow-net --allow-read --allow-env Main.bs.js",
-    "build": "deno compile --allow-net --allow-read --allow-env -o ../dist/svalinn Main.bs.js",
+    "dev": "deno run --allow-net --allow-read --allow-env --watch Main.res.js",
+    "start": "deno run --allow-net --allow-read --allow-env Main.res.js",
+    "serve": "deno run --allow-net --allow-read --allow-env Main.res.js",
+    "build": "deno compile --allow-net --allow-read --allow-env -o ../dist/svalinn Main.res.js",
     "test": "deno test --allow-net --allow-read --allow-env tests/*.test.js",
     "fmt": "deno fmt",
     "lint": "deno lint"
