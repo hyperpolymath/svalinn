@@ -1,19 +1,16 @@
 {
   "name": "@svalinn/gateway",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "PMPL-1.0-or-later",
   "exports": {
-    ".": "./Main.res",
-    "./compose": "./compose/cli.ts"
+    ".": "./Main.bs.js"
   },
   "tasks": {
-    "dev": "deno run --allow-net --allow-read --allow-env --watch main.ts",
-    "start": "deno run --allow-net --allow-read --allow-env main.ts",
-    "build": "deno compile --allow-net --allow-read --allow-env -o dist/svalinn main.ts",
-    "build:compose": "deno compile --allow-net --allow-read --allow-env -o dist/svalinn-compose compose/cli.ts",
-    "compose": "deno run --allow-net --allow-read --allow-env compose/cli.ts",
-    "test": "deno test --allow-net --allow-read --allow-env",
-    "check": "deno check main.ts compose/cli.ts",
+    "dev": "deno run --allow-net --allow-read --allow-env --watch Main.bs.js",
+    "start": "deno run --allow-net --allow-read --allow-env Main.bs.js",
+    "serve": "deno run --allow-net --allow-read --allow-env Main.bs.js",
+    "build": "deno compile --allow-net --allow-read --allow-env -o ../dist/svalinn Main.bs.js",
+    "test": "deno test --allow-net --allow-read --allow-env tests/*.test.js",
     "fmt": "deno fmt",
     "lint": "deno lint"
   },

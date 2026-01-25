@@ -1,28 +1,17 @@
 {
   "name": "@svalinn/gateway",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "Svalinn Edge Shield - Type-safe HTTP gateway for verified container operations",
+  "license": "PMPL-1.0-or-later",
+  "author": "Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>",
+  "type": "module",
   "scripts": {
-    "build": "rescript",
-    "watch": "rescript build -watch"
+    "res:build": "cd src && rescript build",
+    "res:clean": "cd src && rescript clean",
+    "res:watch": "cd src && rescript build -w"
   },
-  "rescript": {
-    "sources": [
-      {
-        "dir": "src",
-        "subdirs": true
-      }
-    ],
-    "package-specs": {
-      "module": "es6",
-      "in-source": true
-    },
-    "suffix": ".bs.js",
-    "namespace": true
-  },
-  "dependencies": {
-    "@rescript/core": "^1.0.0",
-    "@rescript/std": "^1.0.0",
-    "rescript-fetch": "^0.3.0",
-    "rescript-promise": "^0.3.0"
+  "devDependencies": {
+    "rescript": "^11.0.0",
+    "@rescript/core": "^1.0.0"
   }
 }

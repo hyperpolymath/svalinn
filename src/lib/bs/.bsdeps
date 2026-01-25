@@ -1,0 +1,25 @@
+11.1.4
+/var/mnt/eclipse/repos/svalinn/src
+0
+0
+rescript.json	0x1.a5d71aa694dcdp+30
+.	0x1.a5d71d942bdf7p+30
+lib	0x1.a5d71bc56dce6p+30
+lib/bs	0x1.a5d71c4362cdcp+30
+lib/bs/auth	0x1.a5d71c439913fp+30
+lib/bs/policy	0x1.a5d71c437c679p+30
+lib/bs/bindings	0x1.a5d71c4381866p+30
+lib/bs/mcp	0x1.a5d71c437b617p+30
+lib/bs/gateway	0x1.a5d71c4368f2ap+30
+lib/bs/validation	0x1.a5d71c434102ap+30
+lib/bs/vordr	0x1.a5d71c43859fp+30
+dist	0x1.a5b5f7708ec9p+30
+auth	0x1.a5d71c9de9df2p+30
+policy	0x1.a5d718dae62ffp+30
+bindings	0x1.a5d5a268e668cp+30
+mcp	0x1.a5d71d7f33996p+30
+vordr	0x1.a5d71d7f33667p+30
+validation	0x1.a5d5fe5356b79p+30
+gateway	0x1.a5d71c2a12ac6p+30
+===
+/var/mnt/eclipse/repos/svalinn/node_modules/.deno/rescript@11.1.4/node_modules/rescript/linux/rescript.exe	0x1.a5d71bc56390dp+30
