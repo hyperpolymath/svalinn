@@ -42,29 +42,27 @@ let nextId = (client: t): int => {
 }
 
 // Make MCP request
-let callTool = async (client: t, toolName: string, args: JSON.t): JSON.t => {
+let callTool = async (client: t, toolName: string, args: Js.Json.t): Js.Json.t => {
   // Build params object safely
   let paramsDict = Js.Dict.empty()
-  Js.Dict.set(paramsDict, "name", JSON.Encode.string(toolName))
+  Js.Dict.set(paramsDict, "name", Js.Json.string(toolName))
   Js.Dict.set(paramsDict, "arguments", args)
 
   let request: mcpRequest = {
     jsonrpc: "2.0",
     method: "tools/call",
-    params: JSON.Encode.object(paramsDict),
+    params: Js.Json.object_(paramsDict),
     id: nextId(client),
   }
 
   // Make HTTP request to Vörðr
   let response = await Fetch.fetch(
     client.config.endpoint,
-    {
-      method: #POST,
-      headers: Fetch.Headers.fromObject({
-        "Content-Type": "application/json",
-      }),
-      body: Fetch.Body.string(JSON.stringify(Obj.magic(request))),
-    },
+    %raw(`{
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request)
+    }`),
   )
 
   let json = await Fetch.Response.json(response)
@@ -83,7 +81,7 @@ let callTool = async (client: t, toolName: string, args: JSON.t): JSON.t => {
 
       {
         jsonrpc: jsonrpc->Belt.Option.getWithDefault("2.0"),
-        id: id->Belt.Option.map(Belt.Float.toInt),
+        id: id->Belt.Option.map(Belt.Float.toInt)->Belt.Option.getWithDefault(0),
         result,
         error,
       }
@@ -96,7 +94,7 @@ let callTool = async (client: t, toolName: string, args: JSON.t): JSON.t => {
   | None =>
     switch mcpResp.result {
     | Some(r) => r
-    | None => JSON.Encode.null
+    | None => Js.Json.null
     }
   }
 }
@@ -106,7 +104,7 @@ let ping = async (client: t): bool => {
   try {
     let _ = await Fetch.fetch(
       `${client.config.endpoint}/health`,
-      {method: #GET},
+      %raw(`{method: "GET"}`),
     )
     true
   } catch {
@@ -147,13 +145,13 @@ let runContainer = async (
 
   {
     id: containerId,
-    name: Option.getOr(request.name, containerId),
+    name: request.name->Belt.Option.getWithDefault(containerId),
     image: request.imageName,
     imageDigest: request.imageDigest,
     state: Gateway.Types.Running,
     policyVerdict: "allowed",
-    createdAt: Some(Date.now()->Float.toString),
-    startedAt: Some(Date.now()->Float.toString),
+    createdAt: Some(Js.Date.now()->Belt.Float.toString),
+    startedAt: Some(Js.Date.now()->Belt.Float.toString),
   }
 }
 
@@ -199,7 +197,7 @@ let requestAuthorization = async (
   operation: string,
   threshold: int,
   signers: int,
-): JSON.t => {
+): Js.Json.t => {
   let args = Obj.magic({
     "operation": operation,
     "threshold": threshold,
@@ -211,17 +209,17 @@ let requestAuthorization = async (
 let submitSignature = async (
   client: t,
   share: signatureShare,
-): JSON.t => {
+): Js.Json.t => {
   let args = Obj.magic(share)
   await callTool(client, toolSubmitSignature, args)
 }
 
 // Monitoring operations
-let startMonitor = async (client: t, config: monitorConfig): JSON.t => {
+let startMonitor = async (client: t, config: monitorConfig): Js.Json.t => {
   await callTool(client, toolMonitorStart, Obj.magic(config))
 }
 
-let stopMonitor = async (client: t, containerId: string): JSON.t => {
+let stopMonitor = async (client: t, containerId: string): Js.Json.t => {
   await callTool(client, toolMonitorStop, Obj.magic({"containerId": containerId}))
 }
 
@@ -229,7 +227,7 @@ let getAnomalies = async (
   client: t,
   containerId: string,
   severity: string,
-): JSON.t => {
+): Js.Json.t => {
   let args = Obj.magic({
     "containerId": containerId,
     "severity": severity,
@@ -238,7 +236,7 @@ let getAnomalies = async (
 }
 
 // Reversibility operations
-let rollback = async (client: t, containerId: string, steps: int): JSON.t => {
+let rollback = async (client: t, containerId: string, steps: int): Js.Json.t => {
   let args = Obj.magic({
     "containerId": containerId,
     "steps": steps,
@@ -246,7 +244,7 @@ let rollback = async (client: t, containerId: string, steps: int): JSON.t => {
   await callTool(client, toolRollback, args)
 }
 
-let previewRollback = async (client: t, containerId: string): JSON.t => {
+let previewRollback = async (client: t, containerId: string): Js.Json.t => {
   let args = Obj.magic({"containerId": containerId})
   await callTool(client, toolPreviewRollback, args)
 }

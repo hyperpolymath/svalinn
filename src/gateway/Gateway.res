@@ -3,7 +3,7 @@
 
 // Configuration
 module Config = {
-  @scope("Deno") @val external getEnv: string => option<string> = "env.get"
+  @scope(("Deno", "env")) @val external getEnv: string => option<string> = "get"
 
   let port = getEnv("SVALINN_PORT")
     ->Belt.Option.flatMap(Belt.Int.fromString)
@@ -89,7 +89,7 @@ module HealthCheck = {
   let handler = async (c: Hono.Context.t<'env, 'path>): Hono.Response.t => {
     // Check Vörðr connectivity
     let vordrConnected = try {
-      let response = await Fetch.fetch(Config.vordrEndpoint ++ "/health")
+      let response = await Fetch.fetch(Config.vordrEndpoint ++ "/health", %raw(`{}`))
       Fetch.Response.ok(response)
     } catch {
     | _ => false
@@ -119,7 +119,7 @@ module ReadinessCheck = {
   let handler = async (c: Hono.Context.t<'env, 'path>): Hono.Response.t => {
     // Check if Vörðr is reachable
     let ready = try {
-      let response = await Fetch.fetch(Config.vordrEndpoint ++ "/health")
+      let response = await Fetch.fetch(Config.vordrEndpoint ++ "/health", %raw(`{}`))
       Fetch.Response.ok(response)
     } catch {
     | _ => false
@@ -150,7 +150,7 @@ module ReadinessCheck = {
 
 // Metrics endpoint
 module Metrics = {
-  let handler = (c: Hono.Context.t<'env, 'path>): Hono.Response.t => {
+  let handler = async (c: Hono.Context.t<'env, 'path>): Hono.Response.t => {
     // Placeholder for Prometheus metrics
     // In production, collect actual metrics
     Hono.Context.text(
@@ -211,7 +211,7 @@ let requestLogger = (): Hono.middleware<'env, 'path> => {
 let cors = (): Hono.middleware<'env, 'path> => {
   async (c, next) => {
     // Get allowed origins from environment (comma-separated list)
-    let allowedOriginsStr = Deno.env.get("ALLOWED_ORIGINS")
+    let allowedOriginsStr = Deno.Env.get("ALLOWED_ORIGINS")
     let allowedOrigins = switch allowedOriginsStr {
     | Some(str) if str != "" => Js.String2.split(str, ",")
     | _ => [] // Default: no origins allowed (most secure)
@@ -232,10 +232,12 @@ let cors = (): Hono.middleware<'env, 'path> => {
     | None => () // No origin header, likely same-origin request
     }
 
-    if Hono.Request.method_(req) == "OPTIONS" {
-      Hono.Context.text(c, "", ~status=204, ())
-    } else {
-      await next()
+    switch Hono.Request.method_(req) {
+    | "OPTIONS" => {
+        let _ = Hono.Context.text(c, "", ~status=204, ())
+        ()
+      }
+    | _ => await next()
     }
   }
 }
@@ -252,7 +254,7 @@ let errorHandler = (): Hono.middleware<'env, 'path> => {
           ("error", Js.Json.string(message))
         ])), ())
 
-        Hono.Context.json(
+        let _ = Hono.Context.json(
           c,
           Js.Json.object_(
             Js.Dict.fromArray([
@@ -319,9 +321,9 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   let app = Hono.make()
 
   // Global middleware
-  app->Hono.use(errorHandler())
-  app->Hono.use(requestLogger())
-  app->Hono.use(cors())
+  app->Hono.use(errorHandler())->ignore
+  app->Hono.use(requestLogger())->ignore
+  app->Hono.use(cors())->ignore
 
   // Health/readiness endpoints (no auth required)
   app->Hono.get("/health", HealthCheck.handler)->ignore
@@ -399,7 +401,12 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
       let name = Validation.getString(body, "name")
       let config = Validation.getObject(body, "config")->Belt.Option.map(Js.Json.object_)
 
-      let result = await McpClient.Container.create(mcpConfig, ~image, ~name?, ~config?, ())
+      let result = switch (name, config) {
+      | (Some(n), Some(c)) => await McpClient.Container.create(mcpConfig, ~image, ~name=n, ~containerConfig=c, ())
+      | (Some(n), None) => await McpClient.Container.create(mcpConfig, ~image, ~name=n, ())
+      | (None, Some(c)) => await McpClient.Container.create(mcpConfig, ~image, ~containerConfig=c, ())
+      | (None, None) => await McpClient.Container.create(mcpConfig, ~image, ())
+      }
       Log.info("Created container", ~metadata=Js.Json.object_(
         Js.Dict.fromArray([("image", Js.Json.string(image))])
       ), ())
@@ -594,7 +601,7 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
             }
           } else {
             // Policy is valid, send to Vörðr for enforcement
-            let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
+            let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=pol, ())
 
             Log.info("Verified image with policy", ~metadata=Js.Json.object_(
               Js.Dict.fromArray([("digest", Js.Json.string(digest))])
@@ -642,7 +649,12 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
           let config = Validation.getObject(body, "config")->Belt.Option.map(Js.Json.object_)
 
           // Create container
-          let createResult = await McpClient.Container.create(mcpConfig, ~image, ~name?, ~config?, ())
+          let createResult = switch (name, config) {
+          | (Some(n), Some(c)) => await McpClient.Container.create(mcpConfig, ~image, ~name=n, ~containerConfig=c, ())
+          | (Some(n), None) => await McpClient.Container.create(mcpConfig, ~image, ~name=n, ())
+          | (None, Some(c)) => await McpClient.Container.create(mcpConfig, ~image, ~containerConfig=c, ())
+          | (None, None) => await McpClient.Container.create(mcpConfig, ~image, ())
+          }
 
           // Extract container ID from result
           let containerId = Validation.getString(createResult, "id")->Belt.Option.getExn
@@ -729,7 +741,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
           | Some(errorResponse) => errorResponse
           | None => {
               // Verify image (which includes .ctp bundle verification)
-              let result = await McpClient.Image.verify(mcpConfig, digest, ~policy=policyJson, ())
+              let result = switch policyJson {
+              | Some(pol) => await McpClient.Image.verify(mcpConfig, digest, ~policy=pol, ())
+              | None => await McpClient.Image.verify(mcpConfig, digest, ())
+              }
 
               Log.info("Verified bundle", ~metadata=Js.Json.object_(
                 Js.Dict.fromArray([("digest", Js.Json.string(digest))])
@@ -851,15 +866,11 @@ let serve = async () => {
     ()
   )
 
-  // Deno.serve wrapper
-  let handler = (req: Fetch.Request.t) => {
-    app->Hono.fetch(req, %raw(`{}`))
-  }
-
-  let options = {
-    "port": Config.port,
-    "hostname": Config.host,
-  }
-
-  %raw(`Deno.serve(options, handler)`)
+  // Start the server with Deno.serve
+  %raw(`
+    Deno.serve({
+      port: Config.port,
+      hostname: Config.host
+    }, (req) => app.fetch(req, {}))
+  `)
 }

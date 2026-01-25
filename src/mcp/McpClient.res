@@ -37,7 +37,7 @@ let defaultConfig: config = {
 }
 
 // Create config from environment
-@scope("Deno") @val external getEnv: string => option<string> = "env.get"
+@scope(("Deno", "env")) @val external getEnv: string => option<string> = "get"
 
 let fromEnv = (): config => {
   {

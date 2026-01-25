@@ -62,6 +62,44 @@ type monitorConfig = {
   filesystem: bool,
 }
 
+// Gateway-compatible types (stubs for now)
+module Gateway = {
+  module Types = {
+    type containerState = Running | Stopped | Created
+
+    type containerInfo = {
+      id: string,
+      name: string,
+      image: string,
+      imageDigest: string,
+      state: containerState,
+      policyVerdict: string,
+      createdAt: option<string>,
+      startedAt: option<string>,
+    }
+
+    type imageInfo = {
+      id: string,
+      tags: array<string>,
+      digest: string,
+      size: int,
+    }
+
+    type runRequest = {
+      imageName: string,
+      imageDigest: string,
+      name: option<string>,
+      containerConfig: option<Js.Json.t>,
+    }
+
+    type verificationResult = {
+      verified: bool,
+      signatures: array<string>,
+      sbom: option<Js.Json.t>,
+    }
+  }
+}
+
 // Tool names (matching Vörðr MCP adapter)
 let toolContainerCreate = "vordr_container_create"
 let toolContainerStart = "vordr_container_start"

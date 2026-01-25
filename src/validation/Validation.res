@@ -215,3 +215,23 @@ let getArray = (data: Js.Json.t, field: string): option<array<Js.Json.t>> => {
 let getObject = (data: Js.Json.t, field: string): option<Js.Dict.t<Js.Json.t>> => {
   getField(data, field)->Belt.Option.flatMap(Js.Json.decodeObject)
 }
+
+// Policy validation (stub - to be implemented)
+type policy = {
+  allowedRegistries: array<string>,
+  deniedImages: array<string>,
+}
+
+let defaultPolicy: policy = {
+  allowedRegistries: ["docker.io", "ghcr.io", "quay.io"],
+  deniedImages: [],
+}
+
+let isAllowedRegistry = (image: string, policy: policy): bool => {
+  Belt.Array.length(policy.allowedRegistries) == 0 ||
+  Belt.Array.some(policy.allowedRegistries, registry => Js.String2.includes(image, registry))
+}
+
+let isDeniedImage = (image: string, policy: policy): bool => {
+  Belt.Array.some(policy.deniedImages, denied => image == denied)
+}

@@ -4,7 +4,7 @@
 open AuthTypes
 
 // Deno environment variable access
-@scope("Deno") @val external getEnv: string => option<string> = "env.get"
+@scope(("Deno", "env")) @val external getEnv: string => option<string> = "get"
 
 // Try each authentication method until one succeeds
 let rec tryAuthMethods = async (
@@ -66,21 +66,7 @@ and authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
         // Store result
         Hono.Context.set(c, "authResult", result.contents)
 
-        if !result.contents.authenticated {
-          let errorMsg = result.contents.error->Belt.Option.getWithDefault("Unauthorized")
-          let response = Hono.Context.json(
-            c,
-            Js.Json.object_(
-              Js.Dict.fromArray([
-                ("error", Js.Json.string("Unauthorized")),
-                ("message", Js.Json.string(errorMsg)),
-              ])
-            ),
-            ~status=401,
-            ()
-          )
-          %raw(`return response`)
-        } else {
+        if result.contents.authenticated {
           // Create user context
           let token = result.contents.token
           let user: userContext = {
@@ -98,6 +84,20 @@ and authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
 
           Hono.Context.set(c, "user", user)
           await next()
+        } else {
+          // Not authenticated - return 401
+          let errorMsg = result.contents.error->Belt.Option.getWithDefault("Unauthorized")
+          let _ = Hono.Context.json(
+            c,
+            Js.Json.object_(
+              Js.Dict.fromArray([
+                ("error", Js.Json.string("Unauthorized")),
+                ("message", Js.Json.string(errorMsg)),
+              ])
+            ),
+            ~status=401,
+            ()
+          )
         }
       }
     }
@@ -238,7 +238,7 @@ and authenticateApiKey = (c: Hono.Context.t<'env, 'path>, config: authConfig): a
           }
 
           // Look up key
-          switch Map.String.get(apiKeyConfig.keys, key) {
+          switch Belt.Map.String.get(apiKeyConfig.keys, key) {
           | None => {
               authenticated: false,
               method: ApiKey,
@@ -320,7 +320,15 @@ and authenticateMTLS = (c: Hono.Context.t<'env, 'path>): authResult => {
   let clientCertVerify = Hono.Request.header(req, "X-Client-Cert-Verify")
 
   switch (clientCert, clientCertVerify) {
-  | (None, _) | (_, None) | (_, Some(verify)) if verify != "SUCCESS" => {
+  | (None, _) | (_, None) => {
+      authenticated: false,
+      method: MTLS,
+      subject: None,
+      scopes: None,
+      token: None,
+      error: Some("No valid client certificate"),
+    }
+  | (Some(_), Some(verify)) if verify != "SUCCESS" => {
       authenticated: false,
       method: MTLS,
       subject: None,
@@ -331,7 +339,8 @@ and authenticateMTLS = (c: Hono.Context.t<'env, 'path>): authResult => {
   | (Some(certDN), Some(_)) => {
       // Parse CN from DN
       let cnRegex = %re("/CN=([^,]+)/")
-      let subject = switch Js.String2.match(certDN, cnRegex) {
+      let matchResult: option<array<string>> = %raw(`certDN.match(cnRegex)`)
+      let subject = switch matchResult {
       | Some(matches) => matches->Belt.Array.get(1)->Belt.Option.getWithDefault(certDN)
       | None => certDN
       }
@@ -355,13 +364,12 @@ let requireScopes = (requiredScopes: array<string>): Hono.middleware<'env, 'path
 
     switch user {
     | None => {
-        let response = Hono.Context.json(
+        let _ = Hono.Context.json(
           c,
           Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string("Not authenticated"))])),
           ~status=401,
           ()
         )
-        %raw(`return response`)
       }
     | Some(u) => {
         let missingScopes = Belt.Array.keep(requiredScopes, s =>
@@ -369,7 +377,7 @@ let requireScopes = (requiredScopes: array<string>): Hono.middleware<'env, 'path
         )
 
         if Belt.Array.length(missingScopes) > 0 {
-          let response = Hono.Context.json(
+          let _ = Hono.Context.json(
             c,
             Js.Json.object_(
               Js.Dict.fromArray([
@@ -382,7 +390,6 @@ let requireScopes = (requiredScopes: array<string>): Hono.middleware<'env, 'path
             ~status=403,
             ()
           )
-          %raw(`return response`)
         } else {
           await next()
         }
@@ -398,19 +405,18 @@ let requireGroups = (requiredGroups: array<string>): Hono.middleware<'env, 'path
 
     switch user {
     | None => {
-        let response = Hono.Context.json(
+        let _ = Hono.Context.json(
           c,
           Js.Json.object_(Js.Dict.fromArray([("error", Js.Json.string("Not authenticated"))])),
           ~status=401,
           ()
         )
-        %raw(`return response`)
       }
     | Some(u) => {
         let hasGroup = Belt.Array.some(requiredGroups, g => Belt.Array.some(u.groups, ug => ug == g))
 
         if !hasGroup {
-          let response = Hono.Context.json(
+          let _ = Hono.Context.json(
             c,
             Js.Json.object_(
               Js.Dict.fromArray([
@@ -422,7 +428,6 @@ let requireGroups = (requiredGroups: array<string>): Hono.middleware<'env, 'path
             ~status=403,
             ()
           )
-          %raw(`return response`)
         } else {
           await next()
         }
@@ -441,7 +446,7 @@ let createAuthConfig = (~options: option<authConfig>=?, ()): authConfig => {
     apiKey: Some({
       header: "X-API-Key",
       prefix: None,
-      keys: Map.String.empty,
+      keys: Belt.Map.String.empty,
     }),
     mtls: None,
     excludePaths: ["/healthz", "/health", "/ready", "/metrics", "/.well-known/"],
@@ -471,7 +476,7 @@ let loadAuthConfigFromEnv = (): authConfig => {
     apiKey: Some({
       header: "X-API-Key",
       prefix: None,
-      keys: Map.String.empty,
+      keys: Belt.Map.String.empty,
     }),
     mtls: None,
     excludePaths: ["/healthz", "/health", "/ready", "/metrics", "/.well-known/"],
@@ -499,7 +504,7 @@ let loadAuthConfigFromEnv = (): authConfig => {
   // Load API keys from environment (comma-separated id:key:scopes format)
   let apiKeyConfig = switch getEnv("API_KEYS") {
   | Some(apiKeysStr) => {
-      let keys = Js.String2.split(apiKeysStr, ",")->Belt.Array.reduce(Map.String.empty, (acc, entry) => {
+      let keys = Js.String2.split(apiKeysStr, ",")->Belt.Array.reduce(Belt.Map.String.empty, (acc, entry) => {
         let parts = Js.String2.split(entry, ":")
         switch (parts->Belt.Array.get(0), parts->Belt.Array.get(1)) {
         | (Some(id), Some(key)) => {
@@ -508,7 +513,7 @@ let loadAuthConfigFromEnv = (): authConfig => {
             | None => ["svalinn:read"]
             }
 
-            Map.String.set(acc, key, {
+            Belt.Map.String.set(acc, key, {
               id,
               name: id,
               scopes,
