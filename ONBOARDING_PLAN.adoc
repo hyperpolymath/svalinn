@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
+// SPDX-License-Identifier: PMPL-1.0-or-later
 = Doctor + Onboarding Implementation Plan
 :toc: preamble
 :toclevels: 3
@@ -422,7 +422,7 @@ m3n4o5p6...  vordr-linux-aarch64-musl
 [source,bash]
 ----
 #!/usr/bin/env bash
-# SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
+# SPDX-License-Identifier: PMPL-1.0-or-later
 # Vordr Quick Install Script
 # Usage: curl -fsSL https://get.vordr.dev | bash
 
@@ -946,7 +946,7 @@ XDG-compliant configuration with clear state management and config commands.
 [source,toml]
 ----
 # /etc/vordr/config.toml or ~/.config/vordr/config.toml
-# SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
+# SPDX-License-Identifier: PMPL-1.0-or-later
 
 [engine]
 # Container runtime binary (youki or runc)

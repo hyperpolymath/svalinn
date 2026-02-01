@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
+// SPDX-License-Identifier: PMPL-1.0-or-later
 = Svalinn Project Roadmap
 :toc: preamble
 :toclevels: 2
@@ -211,6 +211,91 @@ The core container engine is functionally complete with the following modules:
 * [ ] Security guide
 * [ ] Deployment guide
 * [ ] Troubleshooting guide
+
+== Phase 6: Security Hardening
+
+**Current Compliance**: 20% svalinn-project compliant
+**Target**: 90%+ compliance by v1.0
+
+=== 6.1 Phase 1 (v1.0) - WAF and Firewall (Q2 2026)
+
+*Status*: Configs created, deployment required
+
+* [x] OWASP ModSecurity Core Rule Set configuration
+* [x] Firewalld zone definitions (svalinn-edge, svalinn-internal)
+* [x] Security headers middleware (HSTS, CSP, X-Frame-Options)
+* [ ] Deploy ModSecurity with nginx frontend (1-2 weeks)
+* [ ] Deploy firewalld zones to production
+* [ ] SSRF protection (URL validation, IP allowlists)
+* [ ] Rate limiting per IP (100 req/min default)
+* [ ] Request size limits enforcement
+
+**Effort**: 1-2 weeks
+**Impact**: OWASP Top 10 defenses, WAF protection
+
+=== 6.2 Phase 2 (v1.5) - Post-Quantum TLS (Q4 2026)
+
+*Status*: BLOCKED by Deno - no PQ-TLS support yet
+
+* [ ] **Option 1**: Wait for Deno OQS-BoringSSL integration (6-12 months)
+* [ ] **Option 2**: Rewrite gateway in Rust with Hyper + Rustls + liboqs (2-3 months)
+* [ ] **Option 3**: Deploy nginx with OQS-OpenSSL frontend (1-2 weeks)
+* [ ] Kyber-1024 KEM for TLS key exchange
+* [ ] Hybrid TLS (classical + PQ) mode
+* [ ] PQ cipher suite negotiation
+
+**Effort**: 1-2 weeks (nginx) OR 2-3 months (Rust) OR 6-12 months (wait)
+**Impact**: Quantum-resistant transport security
+
+=== 6.3 Phase 3 (v2.0) - Modern Transport (Q1 2027)
+
+*Status*: Tracking Deno issue #9900
+
+* [ ] QUIC protocol support
+* [ ] HTTP/3 for gateway operations
+* [ ] 0-RTT connection establishment
+* [ ] IPv6-only mode (disable IPv4)
+* [ ] XChaCha20-Poly1305 cipher suite
+* [ ] HKDF-SHAKE512 key derivation
+
+**Effort**: 3-4 weeks (when Deno support lands)
+**Impact**: Faster connections, reduced latency, better mobile support
+
+=== 6.4 Phase 4 (v2.5) - Advanced Security (Q2 2027)
+
+*Status*: Planned
+
+* [ ] Role-Based Access Control (RBAC)
+* [ ] Multi-Factor Authentication (MFA) - TOTP/WebAuthn
+* [ ] SIEM integration (Splunk, ELK, Datadog)
+* [ ] Automated threat response
+* [ ] Container image scanning integration
+* [ ] Runtime application self-protection (RASP)
+* [ ] Secrets management (HashiCorp Vault integration)
+
+**Effort**: 6-8 weeks
+**Impact**: Enterprise-grade security features
+
+=== Security Compliance Roadmap
+
+| Component | v0.2 | v1.0 | v1.5 | v2.0 | v2.5 |
+|-----------|------|------|------|------|------|
+| OAuth2/JWT | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Security Headers | ✅ | ✅ | ✅ | ✅ | ✅ |
+| ModSecurity | Config | ✅ | ✅ | ✅ | ✅ |
+| Firewalld | Config | ✅ | ✅ | ✅ | ✅ |
+| SSRF Protection | ❌ | ✅ | ✅ | ✅ | ✅ |
+| PQ-TLS | ❌ | ❌ | ✅ | ✅ | ✅ |
+| QUIC/HTTP/3 | ❌ | ❌ | ❌ | ✅ | ✅ |
+| RBAC | ❌ | ❌ | ⏳ | ✅ | ✅ |
+| MFA | ❌ | ❌ | ❌ | ⏳ | ✅ |
+| SIEM | ❌ | ❌ | ❌ | ⏳ | ✅ |
+
+**Current Compliance**: 20%
+**v1.0 Target**: 60%
+**v2.5 Target**: 95%
+
+**See Also**: link:SECURITY.md[Security Policy], link:../cerro-torre/docs/MISSING-SECURITY-COMPONENTS.adoc[Ecosystem Security Audit]
 
 == Technical Decisions (Locked)
 

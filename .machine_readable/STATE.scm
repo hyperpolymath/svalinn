@@ -1,7 +1,7 @@
 ;; SPDX-License-Identifier: PMPL-1.0-or-later
 ;; STATE.scm — Current state, progress, and session tracking for Svalinn
 ;; Format: hyperpolymath/state.scm specification
-;; Reference: hyperpolymath/gitvisor/STATE.scm
+;; Reference: hyperpolymath/git-hud/STATE.scm
 
 (define-module (svalinn state)
   #:export (metadata

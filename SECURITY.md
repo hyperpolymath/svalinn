@@ -1,36 +1,56 @@
 # Security Policy
 
-<!-- 
-============================================================================
-TEMPLATE INSTRUCTIONS (delete this block before publishing)
-============================================================================
-Replace all {{PLACEHOLDER}} values with your information:
-  {{PROJECT_NAME}}     - Your project name
-  {{OWNER}}            - GitHub username or org (e.g., hyperpolymath)
-  {{REPO}}             - Repository name
-  {{SECURITY_EMAIL}}   - Security contact email
-  {{PGP_FINGERPRINT}}  - Your PGP key fingerprint (40 chars, no spaces)
-  {{PGP_KEY_URL}}      - URL to your public PGP key
-  {{WEBSITE}}          - Your website/domain
-  {{CURRENT_YEAR}}     - Current year for copyright
+## Current Security Posture (2026-01-28)
 
-Optional: Remove sections that don't apply (e.g., PGP if you don't use it)
-============================================================================
--->
+**Svalinn-Project Compliance**: 20%
 
-We take security seriously. We appreciate your efforts to responsibly disclose vulnerabilities and will make every effort to acknowledge your contributions.
+Svalinn is a Deno-based HTTP gateway under active security development. This document describes our current security status, implemented features, and known limitations.
 
-## Table of Contents
+### Implemented Features ✅
 
-- [Reporting a Vulnerability](#reporting-a-vulnerability)
-- [What to Include](#what-to-include)
-- [Response Timeline](#response-timeline)
-- [Disclosure Policy](#disclosure-policy)
-- [Scope](#scope)
-- [Safe Harbour](#safe-harbour)
-- [Recognition](#recognition)
-- [Security Updates](#security-updates)
-- [Security Best Practices](#security-best-practices)
+| Component | Status | Standard | Notes |
+|-----------|--------|----------|-------|
+| **OAuth2 / OIDC** | ✅ Production | RFC 6749, OpenID Connect | Token validation, JWKS caching |
+| **JWT Verification** | ✅ Production | RFC 7519 | Web Crypto API |
+| **API Key Auth** | ✅ Production | Custom | Bearer token authentication |
+| **mTLS** | ✅ Production | TLS 1.3 | Mutual TLS client certificates |
+| **JSON Schema Validation** | ✅ Production | Ajv | Request payload validation |
+| **Security Headers** | ✅ Production | OWASP | HSTS, CSP, X-Frame-Options, etc. |
+| **TLS 1.3** | ✅ Production | RFC 8446 | Via Deno (BoringSSL) |
+| **CORS** | ✅ Production | W3C CORS | Configurable origin allowlist |
+| **Structured Logging** | ✅ Production | JSON | Security event logging |
+
+### Security Configurations Created (Awaiting Deployment) ⚠️
+
+| Component | Status | Location | Notes |
+|-----------|--------|----------|-------|
+| **OWASP ModSecurity CRS** | ⚠️ Config Only | `config/modsecurity/` | OWASP Top 10 defenses, needs nginx/Apache |
+| **Firewalld Zones** | ⚠️ Config Only | `config/firewalld/zones/` | svalinn-edge.xml, svalinn-internal.xml |
+| **Security Headers Middleware** | ⚠️ Code Ready | `src/middleware/SecurityHeaders.res` | Needs integration in Gateway.res |
+
+### Missing Features (Deno Limitations) ❌
+
+| Component | Priority | Blocker | Timeline |
+|-----------|----------|---------|----------|
+| **PQ-TLS (Kyber-1024)** | CRITICAL | Deno uses BoringSSL (no PQ support) | 6-12 months (wait for Deno) or 2-3 months (Rust rewrite) |
+| **QUIC / HTTP/3** | HIGH | Deno QUIC support pending | 6-12 months (track [Deno #9900](https://github.com/denoland/deno/issues/9900)) |
+| **XChaCha20-Poly1305** | MEDIUM | Deno Web Crypto doesn't expose XChaCha20 | 2-3 days (use libsodium-wrappers) |
+| **HKDF-SHAKE512** | MEDIUM | Web Crypto has HKDF-SHA256/512 only | 1-2 days (custom implementation) |
+
+**IMPORTANT**: Post-quantum TLS is CRITICAL for svalinn-project compliance but blocked by Deno's crypto backend. Options:
+1. Wait for Deno to integrate OQS-BoringSSL (6-12 months)
+2. Rewrite Svalinn in Rust with Hyper + Rustls + liboqs (2-3 months)
+3. Put nginx with OQS-OpenSSL in front of Svalinn (1-2 weeks)
+
+---
+
+## Supported Versions
+
+| Version | Supported | Notes |
+|---------|-----------|-------|
+| `main` branch | ✅ Yes | Latest development |
+| v0.2.0-rc1 | ✅ Yes | Production ready (95% complete) |
+| Earlier versions | ❌ No | Pre-production |
 
 ---
 
@@ -38,129 +58,195 @@ We take security seriously. We appreciate your efforts to responsibly disclose v
 
 ### Preferred Method: GitHub Security Advisories
 
-The preferred method for reporting security vulnerabilities is through GitHub's Security Advisory feature:
-
-1. Navigate to [Report a Vulnerability](https://github.com/{{OWNER}}/{{REPO}}/security/advisories/new)
+1. Navigate to [Report a Vulnerability](https://github.com/hyperpolymath/svalinn/security/advisories/new)
 2. Click **"Report a vulnerability"**
 3. Complete the form with as much detail as possible
 4. Submit — we'll receive a private notification
 
-This method ensures:
-
-- End-to-end encryption of your report
-- Private discussion space for collaboration
-- Coordinated disclosure tooling
-- Automatic credit when the advisory is published
-
-### Alternative: Encrypted Email
-
-If you cannot use GitHub Security Advisories, you may email us directly:
+### Alternative: Email
 
 | | |
 |---|---|
-| **Email** | {{SECURITY_EMAIL}} |
-| **PGP Key** | [Download Public Key]({{PGP_KEY_URL}}) |
-| **Fingerprint** | `{{PGP_FINGERPRINT}}` |
+| **Email** | jonathan.jewell@open.ac.uk |
+| **Subject Line** | `[SECURITY] Svalinn: <brief description>` |
 
-```bash
-# Import our PGP key
-curl -sSL {{PGP_KEY_URL}} | gpg --import
-
-# Verify fingerprint
-gpg --fingerprint {{SECURITY_EMAIL}}
-
-# Encrypt your report
-gpg --armor --encrypt --recipient {{SECURITY_EMAIL}} report.txt
-```
-
-> **⚠️ Important:** Do not report security vulnerabilities through public GitHub issues, pull requests, discussions, or social media.
-
----
-
-## What to Include
-
-A good vulnerability report helps us understand and reproduce the issue quickly.
-
-### Required Information
-
-- **Description**: Clear explanation of the vulnerability
-- **Impact**: What an attacker could achieve (confidentiality, integrity, availability)
-- **Affected versions**: Which versions/commits are affected
-- **Reproduction steps**: Detailed steps to reproduce the issue
-
-### Helpful Additional Information
-
-- **Proof of concept**: Code, scripts, or screenshots demonstrating the vulnerability
-- **Attack scenario**: Realistic attack scenario showing exploitability
-- **CVSS score**: Your assessment of severity (use [CVSS 3.1 Calculator](https://www.first.org/cvss/calculator/3.1))
-- **CWE ID**: Common Weakness Enumeration identifier if known
-- **Suggested fix**: If you have ideas for remediation
-- **References**: Links to related vulnerabilities, research, or advisories
-
-### Example Report Structure
-
-```markdown
-## Summary
-[One-sentence description of the vulnerability]
-
-## Vulnerability Type
-[e.g., SQL Injection, XSS, SSRF, Path Traversal, etc.]
-
-## Affected Component
-[File path, function name, API endpoint, etc.]
-
-## Affected Versions
-[Version range or specific commits]
-
-## Severity Assessment
-- CVSS 3.1 Score: [X.X]
-- CVSS Vector: [CVSS:3.1/AV:X/AC:X/PR:X/UI:X/S:X/C:X/I:X/A:X]
-
-## Description
-[Detailed technical description]
-
-## Steps to Reproduce
-1. [First step]
-2. [Second step]
-3. [...]
-
-## Proof of Concept
-[Code, curl commands, screenshots, etc.]
-
-## Impact
-[What can an attacker achieve?]
-
-## Suggested Remediation
-[Optional: your ideas for fixing]
-
-## References
-[Links to related issues, CVEs, research]
-```
+> **⚠️ Important:** Do not report security vulnerabilities through public GitHub issues or discussions.
 
 ---
 
 ## Response Timeline
-
-We commit to the following response times:
 
 | Stage | Timeframe | Description |
 |-------|-----------|-------------|
 | **Initial Response** | 48 hours | We acknowledge receipt and confirm we're investigating |
 | **Triage** | 7 days | We assess severity, confirm the vulnerability, and estimate timeline |
 | **Status Update** | Every 7 days | Regular updates on remediation progress |
-| **Resolution** | 90 days | Target for fix development and release (complex issues may take longer) |
+| **Resolution** | 90 days | Target for fix development and release |
 | **Disclosure** | 90 days | Public disclosure after fix is available (coordinated with you) |
 
-> **Note:** These are targets, not guarantees. Complex vulnerabilities may require more time. We'll communicate openly about any delays.
+---
+
+## Security Considerations for Svalinn
+
+As an HTTP gateway for verified container operations, Svalinn has specific security requirements:
+
+### Authentication & Authorization
+- OAuth2 / OIDC flows with token refresh
+- JWT signature verification (RS256, ES256)
+- API key authentication with configurable scopes
+- mTLS for machine-to-machine authentication
+- RBAC planned (not yet implemented)
+
+### Input Validation
+- JSON Schema validation for all requests (Ajv)
+- Gatekeeper policy format validation
+- URL validation (SSRF prevention planned)
+- Request size limits
+
+### Transport Security
+- TLS 1.3 enforced (Deno default)
+- HSTS with preload directive
+- Strong cipher suites (BoringSSL defaults)
+- **No PQ-TLS yet** (Deno limitation)
+
+### Web Application Security (OWASP Top 10 2021)
+
+| Risk | Defense | Status |
+|------|---------|--------|
+| A01: Broken Access Control | OAuth2/JWT + RBAC planned | ⚠️ Partial |
+| A02: Cryptographic Failures | TLS 1.3 + strong ciphers | ⚠️ No PQ-TLS |
+| A03: Injection | JSON Schema validation | ✅ Implemented |
+| A04: Insecure Design | Threat modeling + spec | ✅ Implemented |
+| A05: Security Misconfiguration | Security headers + CSP | ✅ Implemented |
+| A06: Vulnerable Components | Dependabot + Deno audit | ✅ Implemented |
+| A07: Identification Failures | OAuth2 + MFA planned | ⚠️ No MFA |
+| A08: Software Integrity Failures | SBOM + Sigstore planned | ⚠️ Planned |
+| A09: Logging Failures | Structured logging + SIEM planned | ⚠️ No SIEM |
+| A10: SSRF | URL validation planned | ❌ Not implemented |
+
+### ModSecurity Integration (Deployment Required)
+
+We've created OWASP ModSecurity Core Rule Set (CRS) configurations in `config/modsecurity/`:
+
+**Defenses Configured:**
+- SQL injection detection and blocking
+- XSS attack detection
+- SSRF prevention (localhost/private IP blocking)
+- Rate limiting (100 req/min per IP)
+- Request size limits
+- Suspicious header detection
+
+**Deployment Options:**
+1. **Nginx with ModSecurity**: Put nginx in front of Svalinn, load ModSecurity module
+2. **Apache with mod_security2**: Use Apache as reverse proxy
+3. **Cloudflare WAF**: Use Cloudflare's managed WAF (commercial)
+
+**Deployment Required**: ModSecurity is not yet active. Configs are ready but need web server integration.
+
+### Firewalld Integration (Deployment Required)
+
+We've created firewalld zone configurations in `config/firewalld/zones/`:
+
+**Zones:**
+- `svalinn-edge.xml`: Public-facing HTTPS gateway (ports 80, 443)
+- `svalinn-internal.xml`: Internal service communication (MCP to Vörðr)
+
+**Deployment Steps:**
+```bash
+# Copy zone files
+sudo cp config/firewalld/zones/*.xml /etc/firewalld/zones/
+
+# Reload firewalld
+sudo firewall-cmd --reload
+
+# Assign interface to zone
+sudo firewall-cmd --zone=svalinn-edge --add-interface=eth0 --permanent
+```
+
+---
+
+## Known Security Limitations
+
+### CRITICAL Limitations
+
+1. **No Post-Quantum TLS**
+   - Uses classical TLS 1.3 (RSA/ECDHE key exchange)
+   - Session keys vulnerable to future quantum computers
+   - **Mitigation Options**:
+     - Wait for Deno PQ-TLS support (6-12 months)
+     - Rewrite in Rust with liboqs (2-3 months)
+     - Nginx PQ-TLS frontend (1-2 weeks)
+
+### HIGH Limitations
+
+1. **No QUIC / HTTP/3**
+   - Uses HTTP/2 (1-RTT TLS handshake vs 0-RTT with QUIC)
+   - Head-of-line blocking on lossy networks
+   - **Mitigation**: Track Deno issue #9900
+
+2. **ModSecurity Not Deployed**
+   - WAF configs created but not active
+   - No OWASP Top 10 runtime protection yet
+   - **Fix**: Deploy nginx with ModSecurity (1-2 weeks)
+
+### MEDIUM Limitations
+
+1. **No SSRF Protection**
+   - URL validation not implemented
+   - Could allow server-side request forgery attacks
+   - **Fix**: Add URL allowlist validation (2-3 days)
+
+2. **No RBAC**
+   - JWT verification works but no role-based access control
+   - All authenticated users have same permissions
+   - **Fix**: Implement role/scope checking (1 week)
+
+3. **No MFA**
+   - OAuth2 works but no multi-factor authentication
+   - Single factor (password/token) only
+   - **Fix**: Add TOTP/WebAuthn support (2-3 weeks)
+
+---
+
+## Security Best Practices for Operators
+
+When deploying Svalinn in production:
+
+### Infrastructure
+- Deploy behind nginx with OWASP ModSecurity enabled
+- Configure firewalld zones with principle of least privilege
+- Use TLS 1.3 with strong ciphers only
+- Enable HSTS with preload directive
+- Isolate in Kubernetes namespace or Docker network
+
+### Authentication
+- Use OAuth2 / OIDC for human users
+- Use mTLS for machine-to-machine (Vörðr communication)
+- Rotate API keys regularly (90 days recommended)
+- Store secrets in vault (HashiCorp Vault, Kubernetes Secrets)
+- Enable MFA when support is added
+
+### Monitoring
+- Forward logs to SIEM (Splunk, ELK, Datadog)
+- Alert on authentication failures (5+ in 5 minutes)
+- Alert on rate limit violations
+- Monitor ModSecurity blocks
+- Track certificate expiration
+
+### Updates
+- Subscribe to GitHub security advisories
+- Apply security patches within 7 days
+- Test updates in staging first
+- Keep Deno runtime updated
 
 ---
 
 ## Disclosure Policy
 
-We follow **coordinated disclosure** (also known as responsible disclosure):
+We follow **coordinated disclosure** (responsible disclosure):
 
 1. **You report** the vulnerability privately
-2. **We acknowledge** and begin investigation
+2. **We acknowledge** and begin investigation (48 hours)
 3. **We develop** a fix and prepare a release
 4. **We coordinate** disclosure timing with you
 5. **We publish** security advisory and fix simultaneously
@@ -172,235 +258,37 @@ We follow **coordinated disclosure** (also known as responsible disclosure):
 - We will work with you to understand and resolve the issue
 - We will credit you in the security advisory (unless you prefer anonymity)
 - We will notify you before public disclosure
-- We will publish advisories with sufficient detail for users to assess risk
 
 ### Your Commitments
 
 - Report vulnerabilities promptly after discovery
-- Give us reasonable time to address the issue before disclosure
-- Do not access, modify, or delete data beyond what's necessary to demonstrate the vulnerability
-- Do not degrade service availability (no DoS testing on production)
-- Do not share vulnerability details with others until coordinated disclosure
-
-### Disclosure Timeline
-
-```
-Day 0          You report vulnerability
-Day 1-2        We acknowledge receipt
-Day 7          We confirm vulnerability and share initial assessment
-Day 7-90       We develop and test fix
-Day 90         Coordinated public disclosure
-               (earlier if fix is ready; later by mutual agreement)
-```
-
-If we cannot reach agreement on disclosure timing, we default to 90 days from your initial report.
+- Give us reasonable time to address the issue (90 days)
+- Do not access, modify, or delete data beyond proof-of-concept
+- Do not share vulnerability details until coordinated disclosure
 
 ---
 
-## Scope
-
-### In Scope ✅
-
-The following are within scope for security research:
-
-- This repository (`{{OWNER}}/{{REPO}}`) and all its code
-- Official releases and packages published from this repository
-- Documentation that could lead to security issues
-- Build and deployment configurations in this repository
-- Dependencies (report here, we'll coordinate with upstream)
-
-### Out of Scope ❌
-
-The following are **not** in scope:
-
-- Third-party services we integrate with (report directly to them)
-- Social engineering attacks against maintainers
-- Physical security
-- Denial of service attacks against production infrastructure
-- Spam, phishing, or other non-technical attacks
-- Issues already reported or publicly known
-- Theoretical vulnerabilities without proof of concept
-
-### Qualifying Vulnerabilities
-
-We're particularly interested in:
-
-- Remote code execution
-- SQL injection, command injection, code injection
-- Authentication/authorisation bypass
-- Cross-site scripting (XSS) and cross-site request forgery (CSRF)
-- Server-side request forgery (SSRF)
-- Path traversal / local file inclusion
-- Information disclosure (credentials, PII, secrets)
-- Cryptographic weaknesses
-- Deserialisation vulnerabilities
-- Memory safety issues (buffer overflows, use-after-free, etc.)
-- Supply chain vulnerabilities (dependency confusion, etc.)
-- Significant logic flaws
-
-### Non-Qualifying Issues
-
-The following generally do not qualify as security vulnerabilities:
-
-- Missing security headers on non-sensitive pages
-- Clickjacking on pages without sensitive actions
-- Self-XSS (requires victim to paste code)
-- Missing rate limiting (unless it enables a specific attack)
-- Username/email enumeration (unless high-risk context)
-- Missing cookie flags on non-sensitive cookies
-- Software version disclosure
-- Verbose error messages (unless exposing secrets)
-- Best practice deviations without demonstrable impact
-
----
-
-## Safe Harbour
-
-We support security research conducted in good faith.
-
-### Our Promise
-
-If you conduct security research in accordance with this policy:
-
-- ✅ We will not initiate legal action against you
-- ✅ We will not report your activity to law enforcement
-- ✅ We will work with you in good faith to resolve issues
-- ✅ We consider your research authorised under the Computer Fraud and Abuse Act (CFAA), UK Computer Misuse Act, and similar laws
-- ✅ We waive any potential claim against you for circumvention of security controls
-
-### Good Faith Requirements
-
-To qualify for safe harbour, you must:
-
-- Comply with this security policy
-- Report vulnerabilities promptly
-- Avoid privacy violations (do not access others' data)
-- Avoid service degradation (no destructive testing)
-- Not exploit vulnerabilities beyond proof-of-concept
-- Not use vulnerabilities for profit (beyond bug bounties where offered)
-
-> **⚠️ Important:** This safe harbour does not extend to third-party systems. Always check their policies before testing.
-
----
-
-## Recognition
-
-We believe in recognising security researchers who help us improve.
-
-### Hall of Fame
-
-Researchers who report valid vulnerabilities will be acknowledged in our [Security Acknowledgments](SECURITY-ACKNOWLEDGMENTS.md) (unless they prefer anonymity).
-
-Recognition includes:
-
-- Your name (or chosen alias)
-- Link to your website/profile (optional)
-- Brief description of the vulnerability class
-- Date of report
-
-### What We Offer
-
-- ✅ Public credit in security advisories
-- ✅ Acknowledgment in release notes
-- ✅ Entry in our Hall of Fame
-- ✅ Reference/recommendation letter upon request (for significant findings)
-
-### What We Don't Currently Offer
-
-- ❌ Monetary bug bounties
-- ❌ Hardware or swag
-- ❌ Paid security research contracts
-
-> **Note:** We're a community project with limited resources. Your contributions help everyone who uses this software.
-
----
-
-## Security Updates
-
-### Receiving Updates
-
-To stay informed about security updates:
-
-- **Watch this repository**: Click "Watch" → "Custom" → Select "Security alerts"
-- **GitHub Security Advisories**: Published at [Security Advisories](https://github.com/{{OWNER}}/{{REPO}}/security/advisories)
-- **Release notes**: Security fixes noted in [CHANGELOG](CHANGELOG.md)
-
-### Update Policy
-
-| Severity | Response |
-|----------|----------|
-| **Critical/High** | Patch release as soon as fix is ready |
-| **Medium** | Included in next scheduled release (or earlier) |
-| **Low** | Included in next scheduled release |
-
-### Supported Versions
-
-<!-- Adjust this table to match your actual version support policy -->
-
-| Version | Supported | Notes |
-|---------|-----------|-------|
-| `main` branch | ✅ Yes | Latest development |
-| Latest release | ✅ Yes | Current stable |
-| Previous minor release | ✅ Yes | Security fixes backported |
-| Older versions | ❌ No | Please upgrade |
-
----
-
-## Security Best Practices
-
-When using {{PROJECT_NAME}}, we recommend:
-
-### General
-
-- Keep dependencies up to date
-- Use the latest stable release
-- Subscribe to security notifications
-- Review configuration against security documentation
-- Follow principle of least privilege
-
-### For Contributors
-
-- Never commit secrets, credentials, or API keys
-- Use signed commits (`git config commit.gpgsign true`)
-- Review dependencies before adding them
-- Run security linters locally before pushing
-- Report any concerns about existing code
-
----
-
-## Additional Resources
-
-- [Our PGP Public Key]({{PGP_KEY_URL}})
-- [Security Advisories](https://github.com/{{OWNER}}/{{REPO}}/security/advisories)
-- [Changelog](CHANGELOG.md)
-- [Contributing Guidelines](CONTRIBUTING.md)
-- [CVE Database](https://cve.mitre.org/)
-- [CVSS Calculator](https://www.first.org/cvss/calculator/3.1)
-
----
-
-## Contact
+## Security Contact
 
 | Purpose | Contact |
 |---------|---------|
-| **Security issues** | [Report via GitHub](https://github.com/{{OWNER}}/{{REPO}}/security/advisories/new) or {{SECURITY_EMAIL}} |
-| **General questions** | [GitHub Discussions](https://github.com/{{OWNER}}/{{REPO}}/discussions) |
-| **Other enquiries** | See [README](README.md) for contact information |
+| **Security issues** | [Report via GitHub](https://github.com/hyperpolymath/svalinn/security/advisories/new) or jonathan.jewell@open.ac.uk |
+| **Security questions** | [GitHub Discussions](https://github.com/hyperpolymath/svalinn/discussions) |
+| **General questions** | See [README.adoc](README.adoc) for contact information |
 
 ---
 
-## Policy Changes
+## Related Documentation
 
-This security policy may be updated from time to time. Significant changes will be:
-
-- Committed to this repository with a clear commit message
-- Noted in the changelog
-- Announced via GitHub Discussions (for major changes)
-
----
-
-*Thank you for helping keep {{PROJECT_NAME}} and its users safe.* 🛡️
+- [DEPLOYMENT.adoc](DEPLOYMENT.adoc) - Production deployment guide (includes security hardening)
+- [TESTING.adoc](TESTING.adoc) - Security testing procedures
+- [ROADMAP.adoc](ROADMAP.adoc) - Security feature roadmap
+- [Cerro Torre MISSING-SECURITY-COMPONENTS.adoc](https://github.com/hyperpolymath/cerro-torre/blob/main/docs/MISSING-SECURITY-COMPONENTS.adoc) - Ecosystem security audit
 
 ---
 
-<sub>Last updated: {{CURRENT_YEAR}} · Policy version: 1.0.0</sub>
+*Thank you for helping keep Svalinn and its users safe.* 🛡️
+
+---
+
+<sub>Last updated: 2026-01-28 · Policy version: 1.0.0 · v0.2.0-rc1 Status</sub>

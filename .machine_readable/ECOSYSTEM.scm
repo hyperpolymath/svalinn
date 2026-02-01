@@ -60,7 +60,7 @@
               (relationship . "sibling-standard")
               (integration . "Repository compliance standard")))
 
-    ((project (name . "gitvisor")
+    ((project (name . "git-hud")
               (relationship . "infrastructure")
               (integration . "Repository management tooling"))))
 
