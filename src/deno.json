@@ -15,6 +15,9 @@
     "lint": "deno lint"
   },
   "imports": {
+    "rescript/lib/es6/": "../node_modules/rescript/lib/es6/",
+    "@rescript/core/lib/es6/": "../node_modules/@rescript/core/lib/es6/",
+    "hono": "jsr:@hono/hono@^4",
     "@hono/hono": "jsr:@hono/hono@^4",
     "@std/path": "jsr:@std/path@^1",
     "@std/fs": "jsr:@std/fs@^1",
