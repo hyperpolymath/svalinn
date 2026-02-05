@@ -75,4 +75,8 @@ o GatewayTypes.cmi : cp ../bs/gateway/GatewayTypes.cmi
 o GatewayTypes.cmj : cp ../bs/gateway/GatewayTypes.cmj
 o GatewayTypes.cmt : cp ../bs/gateway/GatewayTypes.cmt
 o GatewayTypes.res : cp ../../gateway/GatewayTypes.res
-build install.stamp : touch Main.cmi Main.cmj JWT.cmi JWT.cmj OAuth2.cmi OAuth2.cmj AuthTypes.cmi AuthTypes.cmj Middleware.cmi Middleware.cmj PolicyEngine.cmi PolicyEngine.cmj Deno.cmi Deno.cmj Hono.cmi Hono.cmj Fetch.cmi Fetch.cmj Tools.cmi Tools.cmj Server.cmi Server.cmj McpTypes.cmi McpTypes.cmj McpClient.cmi McpClient.cmj Client.cmi Client.cmj VordrTypes.cmi VordrTypes.cmj Validation.cmi Validation.cmj Gateway.cmi Gateway.cmj GatewayTypes.cmi GatewayTypes.cmj 
+o SecurityHeaders.cmi : cp ../bs/gateway/SecurityHeaders.cmi
+o SecurityHeaders.cmj : cp ../bs/gateway/SecurityHeaders.cmj
+o SecurityHeaders.cmt : cp ../bs/gateway/SecurityHeaders.cmt
+o SecurityHeaders.res : cp ../../gateway/SecurityHeaders.res
+build install.stamp : touch Main.cmi Main.cmj JWT.cmi JWT.cmj OAuth2.cmi OAuth2.cmj AuthTypes.cmi AuthTypes.cmj Middleware.cmi Middleware.cmj PolicyEngine.cmi PolicyEngine.cmj Deno.cmi Deno.cmj Hono.cmi Hono.cmj Fetch.cmi Fetch.cmj Tools.cmi Tools.cmj Server.cmi Server.cmj McpTypes.cmi McpTypes.cmj McpClient.cmi McpClient.cmj Client.cmi Client.cmj VordrTypes.cmi VordrTypes.cmj Validation.cmi Validation.cmj Gateway.cmi Gateway.cmj GatewayTypes.cmi GatewayTypes.cmj SecurityHeaders.cmi SecurityHeaders.cmj 
