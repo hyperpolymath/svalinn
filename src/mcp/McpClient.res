@@ -152,13 +152,13 @@ module Container = {
   // List containers
   let list = async (config: config, ~all: bool=false, ()): Js.Json.t => {
     let params = Js.Json.object_(Js.Dict.fromArray([("all", Js.Json.boolean(all))]))
-    await call(config, "vordr_container_list", params)
+    await call(config, "containers/list", params)
   }
 
   // Get container by ID
   let get = async (config: config, id: string): Js.Json.t => {
     let params = Js.Json.object_(Js.Dict.fromArray([("id", Js.Json.string(id))]))
-    await call(config, "vordr_container_get", params)
+    await call(config, "containers/get", params)
   }
 
   // Create container
@@ -182,13 +182,13 @@ module Container = {
     }
 
     let params = Js.Json.object_(Js.Dict.fromArray(paramsDict))
-    await call(config, "vordr_container_create", params)
+    await call(config, "containers/create", params)
   }
 
   // Start container
   let start = async (config: config, id: string): Js.Json.t => {
     let params = Js.Json.object_(Js.Dict.fromArray([("id", Js.Json.string(id))]))
-    await call(config, "vordr_container_start", params)
+    await call(config, "containers/start", params)
   }
 
   // Stop container
@@ -201,7 +201,7 @@ module Container = {
     }
 
     let params = Js.Json.object_(Js.Dict.fromArray(paramsDict))
-    await call(config, "vordr_container_stop", params)
+    await call(config, "containers/stop", params)
   }
 
   // Remove container
@@ -209,7 +209,7 @@ module Container = {
     let params = Js.Json.object_(
       Js.Dict.fromArray([("id", Js.Json.string(id)), ("force", Js.Json.boolean(force))])
     )
-    await call(config, "vordr_container_remove", params)
+    await call(config, "containers/remove", params)
   }
 
   // Get container logs
@@ -228,7 +228,7 @@ module Container = {
     }
 
     let params = Js.Json.object_(Js.Dict.fromArray(paramsDict))
-    await call(config, "vordr_container_logs", params)
+    await call(config, "containers/logs", params)
   }
 
   // Execute command in container
@@ -250,7 +250,7 @@ module Container = {
     }
 
     let params = Js.Json.object_(Js.Dict.fromArray(paramsDict))
-    await call(config, "vordr_container_exec", params)
+    await call(config, "containers/exec", params)
   }
 }
 
@@ -259,13 +259,13 @@ module Image = {
   // List images
   let list = async (config: config): Js.Json.t => {
     let params = Js.Json.object_(Js.Dict.empty())
-    await call(config, "vordr_image_list", params)
+    await call(config, "images/list", params)
   }
 
   // Pull image
   let pull = async (config: config, image: string): Js.Json.t => {
     let params = Js.Json.object_(Js.Dict.fromArray([("image", Js.Json.string(image))]))
-    await call(config, "vordr_image_pull", params)
+    await call(config, "images/pull", params)
   }
 
   // Remove image
@@ -273,7 +273,7 @@ module Image = {
     let params = Js.Json.object_(
       Js.Dict.fromArray([("image", Js.Json.string(image)), ("force", Js.Json.boolean(force))])
     )
-    await call(config, "vordr_image_remove", params)
+    await call(config, "images/remove", params)
   }
 
   // Verify image (using Cerro Torre)
@@ -286,14 +286,14 @@ module Image = {
     }
 
     let params = Js.Json.object_(Js.Dict.fromArray(paramsDict))
-    await call(config, "vordr_image_verify", params)
+    await call(config, "images/verify", params)
   }
 }
 
 // Health check
 let health = async (config: config): bool => {
   try {
-    let _ = await call(config, "vordr_health", Js.Json.object_(Js.Dict.empty()))
+    let _ = await call(config, "health", Js.Json.object_(Js.Dict.empty()))
     true
   } catch {
   | _ => false
@@ -302,5 +302,5 @@ let health = async (config: config): bool => {
 
 // Get Vörðr version info
 let version = async (config: config): Js.Json.t => {
-  await call(config, "vordr_version", Js.Json.object_(Js.Dict.empty()))
+  await call(config, "version", Js.Json.object_(Js.Dict.empty()))
 }
