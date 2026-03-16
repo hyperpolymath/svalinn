@@ -2,7 +2,7 @@ image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[MPL-2.0,link="https:
 image:https://img.shields.io/badge/Philosophy-Palimpsest-purple.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-licence"]
 
 
-// SPDX-License-Identifier: PMPL-1.0 OR AGPL-3.0-or-later
+// SPDX-License-Identifier: PMPL-1.0 OR PMPL-1.0-or-later
 = Svalinn
 :toc: preamble
 :toclevels: 3
@@ -274,14 +274,14 @@ just precommit          # fmt + lint + check + test
 
 * *Language Policy*: Deno/TypeScript only (no Node, npm, bun)
 * *Security*: HTTPS in production, no hardcoded secrets
-* *Licensing*: PMPL-1.0 OR AGPL-3.0-or-later, SPDX headers required
+* *Licensing*: PMPL-1.0 OR PMPL-1.0-or-later, SPDX headers required
 
 == License
 
 This project is dual-licensed under:
 
 * Palimpsest-MPL-1.0 License
-* AGPL-3.0-or-later
+* PMPL-1.0-or-later
 
 See link:LICENSE.txt[LICENSE.txt] for details.
 
