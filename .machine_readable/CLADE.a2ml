@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Clade declaration — part of the gv-clade-index registry
+# See: https://github.com/hyperpolymath/gv-clade-index
+
+[identity]
+uuid = "0d0a968f-314d-57e1-a395-9b84bc1994d1"
+primary-forge = "github"
+primary-owner = "hyperpolymath"
+canonical-name = "svalinn"
+prefixed-name = "sc-svalinn"
+
+[clade]
+primary = "sc"
+secondary = ["ix"]
+assigned = "2026-03-16"
+rationale = ""
+
+[forges]
+github = "hyperpolymath/svalinn"
+gitlab = "hyperpolymath/svalinn"
+bitbucket = "hyperpolymath/svalinn"
+
+[lineage]
+type = "standalone"
+parent = "Edge security gateway"
+born = "2026-03-16"
