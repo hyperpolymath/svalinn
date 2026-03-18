@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: PMPL-1.0
 name: Conformance Consumer
-
 on:
   push:
     branches: [main]
@@ -14,26 +13,21 @@ on:
       - 'vordr/**'
       - 'spec/**'
       - '.github/workflows/conformance-consumer.yml'
-
 env:
   CARGO_TERM_COLOR: always
   # Pin to specific spec version for reproducibility
   SPEC_VERSION: "0.1.0"
-
 jobs:
   conformance:
     name: Spec Conformance
     runs-on: ubuntu-22.04
-
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
       - name: Install Rust
         uses: dtolnay/rust-action@stable
         with:
           toolchain: stable
-
       - name: Cache cargo
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
         with:
@@ -44,11 +38,9 @@ jobs:
             ~/.cargo/git/db/
             vordr/target/
           key: ${{ runner.os }}-cargo-conformance-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Build vordr
         working-directory: vordr
         run: cargo build --release
-
       - name: Check spec version
         run: |
           echo "## Spec Conformance" >> $GITHUB_STEP_SUMMARY
@@ -62,7 +54,6 @@ jobs:
           else
             echo "::warning::SPEC_VERSION not pinned in Cargo.toml"
           fi
-
       - name: Validate OCI spec compliance
         run: |
           echo "### OCI Spec Compliance" >> $GITHUB_STEP_SUMMARY
@@ -70,7 +61,6 @@ jobs:
           # Check for OCI spec version in dependencies
           OCI_VERSION=$(grep "oci-spec" vordr/Cargo.toml | grep -oP '\d+\.\d+' | head -1)
           echo "**OCI Spec Crate:** $OCI_VERSION" >> $GITHUB_STEP_SUMMARY
-
       - name: Run conformance tests
         working-directory: vordr
         run: |
@@ -84,7 +74,6 @@ jobs:
           echo "### Test Results" >> $GITHUB_STEP_SUMMARY
           echo "- Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
           echo "- Failed: $FAILED" >> $GITHUB_STEP_SUMMARY
-
       - name: Verify JSON schema compliance
         run: |
           echo "### Schema Compliance" >> $GITHUB_STEP_SUMMARY
@@ -94,7 +83,6 @@ jobs:
             name=$(basename "$schema")
             echo "- $name" >> $GITHUB_STEP_SUMMARY
           done
-
       - name: Record conformance evidence
         run: |
           # Create evidence directory
@@ -108,9 +96,9 @@ jobs:
           echo "OCI_SPEC=$(grep oci-spec vordr/Cargo.toml)" >> evidence/$(date +%Y-%m-%d)/conformance.txt
           echo "DATE=$(date -Iseconds)" >> evidence/$(date +%Y-%m-%d)/conformance.txt
           echo "COMMIT=${{ github.sha }}" >> evidence/$(date +%Y-%m-%d)/conformance.txt
-
       - name: Upload conformance evidence
         uses: actions/upload-artifact@v6
         with:
           name: conformance-evidence
           path: evidence/
+permissions: read-all

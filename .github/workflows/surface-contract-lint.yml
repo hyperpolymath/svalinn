@@ -1,22 +1,18 @@
 # SPDX-License-Identifier: PMPL-1.0
 name: Surface Contract Lint
-
 on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, labeled, unlabeled]
-
 jobs:
   surface-contract-lint:
     name: Check Surface Changes
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
-
       - name: Check for surface changes
         id: surface-check
         run: |
@@ -50,7 +46,6 @@ jobs:
               echo "cli_changed=true" >> $GITHUB_OUTPUT
             fi
           fi
-
       - name: Check changelog entry
         if: steps.surface-check.outputs.surface_changed == 'true'
         run: |
@@ -60,7 +55,6 @@ jobs:
             echo "::warning::Surface change detected but no CHANGELOG entry found"
             echo "Please add a changelog entry for surface changes."
           fi
-
       - name: Check surface-change label
         if: steps.surface-check.outputs.surface_changed == 'true'
         run: |
@@ -70,7 +64,6 @@ jobs:
             echo "::warning::Surface change detected but 'surface-change' label not present"
             echo "Consider adding the 'surface-change' label to this PR."
           fi
-
       - name: Generate report
         run: |
           echo "## Surface Contract Check" >> $GITHUB_STEP_SUMMARY
@@ -85,3 +78,4 @@ jobs:
           else
             echo ":white_check_mark: No surface changes detected" >> $GITHUB_STEP_SUMMARY
           fi
+permissions: read-all

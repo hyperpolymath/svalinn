@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: PMPL-1.0
 name: Schema Lint
-
 on:
   push:
     branches: [main]
@@ -12,25 +11,20 @@ on:
     paths:
       - 'spec/schemas/**'
       - '.github/workflows/schema-lint.yml'
-
 jobs:
   schema-lint:
     name: Validate JSON Schemas
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642195f2b846b8bbe245a93 # v4
         with:
           node-version: '20'
-
       - name: Install schema validators
         run: |
           npm install -g ajv-cli ajv-formats
-
       - name: Validate schema syntax
         run: |
           echo "Validating JSON schema files..."
@@ -42,7 +36,6 @@ jobs:
             ajv compile -s "$schema" --strict=false -c ajv-formats || exit 1
           done
           echo "All schemas valid!"
-
       - name: Check schema versioning
         run: |
           echo "Checking schema versioning..."
@@ -55,7 +48,6 @@ jobs:
               echo "OK: $schema has version $version"
             fi
           done
-
       - name: Generate schema index
         run: |
           echo "## Schema Index" >> $GITHUB_STEP_SUMMARY
@@ -67,3 +59,4 @@ jobs:
             version=$(basename "$schema" | grep -oP '\.v\d+(?=\.json$)' || echo "none")
             echo "| $(basename $schema) | $title | $version |" >> $GITHUB_STEP_SUMMARY
           done
+permissions: read-all
