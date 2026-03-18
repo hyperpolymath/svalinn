@@ -115,4 +115,5 @@ jobs:
           echo "| Rm | :construction: |" >> $GITHUB_STEP_SUMMARY
           echo "| System df | :white_check_mark: |" >> $GITHUB_STEP_SUMMARY
           echo "| System prune | :white_check_mark: |" >> $GITHUB_STEP_SUMMARY
-permissions: read-all
+permissions:
+  contents: read

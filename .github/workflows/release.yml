@@ -195,4 +195,5 @@ jobs:
             ## What's Changed
 
             See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
-permissions: read-all
+permissions:
+  contents: read

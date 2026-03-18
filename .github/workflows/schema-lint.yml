@@ -59,4 +59,5 @@ jobs:
             version=$(basename "$schema" | grep -oP '\.v\d+(?=\.json$)' || echo "none")
             echo "| $(basename $schema) | $title | $version |" >> $GITHUB_STEP_SUMMARY
           done
-permissions: read-all
+permissions:
+  contents: read

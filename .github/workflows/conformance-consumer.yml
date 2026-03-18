@@ -101,4 +101,5 @@ jobs:
         with:
           name: conformance-evidence
           path: evidence/
-permissions: read-all
+permissions:
+  contents: read
