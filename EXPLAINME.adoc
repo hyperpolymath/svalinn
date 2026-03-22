@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Svalinn — Show Me The Receipts
+:toc:
+:icons: font
+
+The README makes claims. This file backs them up.
+
+[quote, README]
+____
+Svalinn is a Deno-based HTTP gateway that validates container operation requests and delegates to https://github.com/hyperpolymath/vordr[Vörðr]. It provides REST API access, JSON Schema validation, policy enforcement, OAuth2/JWT authentication, and a Compose-compatible orchestration CLI (`svalinn-compose`).
+____
+
+== Technology Choices
+
+[cols="1,2"]
+|===
+| Technology | Learn More
+
+| **Deno** | https://deno.land
+| **ReScript** | https://rescript-lang.org
+|===
+
+== File Map
+
+[cols="1,2"]
+|===
+| Path | What's There
+
+| `src/` | Source code
+| `lib/` | Library code
+| `test(s)/` | Test suite
+|===
+
+== Questions?
+
+Open an issue or reach out directly — happy to explain anything in more detail.
