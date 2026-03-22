@@ -25,7 +25,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
         with:
           toolchain: stable
       - name: Cache cargo
@@ -97,7 +97,7 @@ jobs:
           echo "DATE=$(date -Iseconds)" >> evidence/$(date +%Y-%m-%d)/conformance.txt
           echo "COMMIT=${{ github.sha }}" >> evidence/$(date +%Y-%m-%d)/conformance.txt
       - name: Upload conformance evidence
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: conformance-evidence
           path: evidence/
