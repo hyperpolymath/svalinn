@@ -20,9 +20,9 @@ build-res:
 build:
     cd src && deno compile --allow-net --allow-read --allow-env -o ../dist/svalinn main.ts
 
-# Run tests
+# Run tests (ReScript compiled to .res.mjs — needs node_modules for @rescript/core resolution)
 test:
-    cd src && deno test --allow-net --allow-read --allow-env
+    cd src && deno test --no-check --allow-all --node-modules-dir=auto tests/AuthTest.res.mjs tests/PolicyEvaluatorTest.res.mjs
 
 # Type check
 check:
@@ -33,6 +33,9 @@ fmt:
     cd src && deno fmt
     cd ui && npx rescript format src/*.res
 
+# Check formatting without modifying
+fmt-check:
+    cargo fmt --all --check
 # Lint code
 lint:
     cd src && deno lint
