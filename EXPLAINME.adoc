@@ -1,14 +1,23 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: PMPL-1.0 OR PMPL-1.0-or-later
 = Svalinn — Show Me The Receipts
 :toc:
 :icons: font
 
 The README makes claims. This file backs them up.
 
-[quote, README]
-____
-Svalinn is a Deno-based HTTP gateway that validates container operation requests and delegates to https://github.com/hyperpolymath/vordr[Vörðr]. It provides REST API access, JSON Schema validation, policy enforcement, OAuth2/JWT authentication, and a Compose-compatible orchestration CLI (`svalinn-compose`).
-____
+== Core Claims
+
+=== Claim 1: Hono-Based HTTP Gateway with JSON Schema Validation and MCP/JSON-RPC Delegation
+
+*From README:* "Svalinn is a Deno-based HTTP gateway that validates container operation requests and delegates to Vörðr. It provides REST API access, JSON Schema validation, policy enforcement, OAuth2/JWT authentication, and a Compose-compatible orchestration CLI (svalinn-compose)."
+
+*Evidence:* The gateway is built with Hono (web framework for Deno/Workers) at `src/main.ts`. Request validation uses JSON Schema files at `spec/schemas/` (gateway-*.json, container-*.json) loaded dynamically. The gateway routes are defined in `src/gateway/` with middleware at `src/validation/` applying schema checks before delegating to Vörðr. The Vörðr integration at `src/vordr/` implements an MCP/JSON-RPC client that forwards validated requests to the container engine. Test coverage includes schema validation tests at `src/tests/`. The REST API endpoints listed in the README (GET /v1/containers, POST /v1/run, POST /v1/verify, etc.) are implemented in the gateway routing layer. **Caveat:** Vörðr integration depends on Vörðr being running; svalinn is purely a validation gateway and does not provide container runtime guarantees itself.
+
+=== Claim 2: Compose-Compatible Orchestration CLI with Security Extensions
+
+*From README:* "svalinn-compose: Compose-compatible multi-container orchestration CLI... Configurable allow/deny rules per operation, OAuth2/OIDC + JWT token validation middleware."
+
+*Evidence:* The `svalinn-compose` CLI implementation at `src/compose/` provides Docker Compose compatibility with security extensions. The compose file parser at `src/compose/parser.ts` accepts standard docker-compose.yaml format and additional `x-svalinn:` sections for policy overrides. The orchestrator at `src/compose/orchestrator.ts` delegates to the Svalinn HTTP gateway for each container operation. Policy enforcement at `src/policy/` evaluates rules per operation type (run, stop, delete). Authentication middleware at `src/auth/` validates OAuth2 tokens and JWT claims. The tool supports commands: `up`, `down`, `ps`, `logs`, `scale`, `config` with security checks at each step. **Caveat:** This is a proof-of-concept; production orchestration may require additional features (rollback, health checks, secrets management).
 
 == Technology Choices
 
@@ -16,19 +25,44 @@ ____
 |===
 | Technology | Learn More
 
-| **Deno** | https://deno.land
-| **ReScript** | https://rescript-lang.org
+| **Deno** | JavaScript runtime (replaces Node/npm)
+| **Hono** | Lightweight web framework
+| **JSON Schema** | Request validation and schema specification
+| **MCP/JSON-RPC** | Protocol for delegating to Vörðr
+| **OAuth2/OIDC** | Authentication and authorization
+| **Model Context Protocol** | Integration protocol for Vörðr
 |===
+
+== Dogfooded Across The Account
+
+Svalinn is part of the verified container ecosystem:
+- https://github.com/hyperpolymath/vordr[Vörðr] — Container engine with formal verification
+- https://github.com/hyperpolymath/cerro-torre[Cerro Torre] — Provenance-verified image packaging
+- https://github.com/hyperpolymath/verified-container-spec[verified-container-spec] — Protocol specification
+
+Used by OPSM container security pipeline (services: svalinn, selur, vordr, cerro-torre).
 
 == File Map
 
-[cols="1,2"]
+[cols="1,3"]
 |===
 | Path | What's There
 
-| `src/` | Source code
-| `lib/` | Library code
-| `test(s)/` | Test suite
+| `src/main.ts` | HTTP gateway entry point (Hono server)
+| `src/gateway/` | Request routing and handler definitions
+| `src/validation/` | JSON Schema validation middleware and logic
+| `src/policy/` | Policy engine: evaluator, store, rule definitions
+| `src/auth/` | OAuth2, OIDC, and JWT token validation middleware
+| `src/compose/` | docker-compose orchestrator and CLI
+| `src/compose/parser.ts` | Parses docker-compose.yaml and x-svalinn extensions
+| `src/compose/orchestrator.ts` | Orchestration logic (up, down, ps, logs, scale)
+| `src/integrations/` | Integrations with Cerro Torre and verified-container-spec
+| `src/vordr/` | Vörðr MCP/JSON-RPC client for container operations
+| `src/mcp/` | MCP tool definitions and protocol handlers
+| `src/tests/` | Test suite for validation, policy, auth
+| `spec/schemas/` | JSON Schema definitions for container operations
+| `Justfile` | Build commands (dev, serve, build, test, check, lint, fmt, precommit)
+| `deno.json` | Deno configuration and imports
 |===
 
 == Questions?
