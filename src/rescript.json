@@ -21,6 +21,19 @@
     {
       "dir": "bindings",
       "subdirs": true
+    },
+    {
+      "dir": "auth",
+      "subdirs": true
+    },
+    {
+      "dir": "policy",
+      "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true,
+      "type": "dev"
     }
   ],
   "package-specs": [

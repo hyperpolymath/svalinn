@@ -4,36 +4,125 @@
 
 (state
   (metadata
-    (version "0.0.1")
+    (version "0.1.0")
     (schema-version "1.0")
     (created "2026-01-03")
-    (updated "2026-01-03")
+    (updated "2026-04-04")
     (project "svalinn")
     (repo "github.com/hyperpolymath/svalinn"))
 
   (project-context
     (name "svalinn")
-    (tagline "")
-    (tech-stack ()))
+    (tagline "Security gateway / edge shield for container image attestation and policy enforcement")
+    (tech-stack ("ReScript" "Deno" "Hono" "JSON-Schema")))
 
   (current-position
-    (phase "initial")
-    (overall-completion 0)
-    (components ())
-    (working-features ()))
+    (phase "crg-c-testing")
+    (overall-completion 35)
+    (components
+      (component
+        (name "auth")
+        (status "tested")
+        (notes "AuthTest.res + AuthSecurityTest.res (22 security tests covering JWT malform, expired, alg confusion, algorithm swap, alg:none, injection, role integrity, OAuth2 entropy)"))
+      (component
+        (name "policy")
+        (status "tested")
+        (notes "PolicyEvaluatorTest.res + PolicySecurityTest.res (22 security tests covering default-deny, privilege escalation, policy injection, wildcard boundaries, violation severity, result integrity)"))
+      (component
+        (name "e2e-gateway")
+        (status "tested")
+        (notes "tests/e2e/gateway_test.js (15 tests — full auth+policy+HTTP pipeline, 401/403/400/201 response codes, error-response schema conformance)"))
+      (component
+        (name "property-tests")
+        (status "tested")
+        (notes "tests/property/policy_properties_test.js (20 tests — determinism, composition, gatekeeper-policy schema round-trip, registry extraction, monotonicity, glob edge cases)"))
+      (component
+        (name "schema-tests")
+        (status "tested")
+        (notes "tests/schema/schema_test.js (22 tests — all 7 spec/schemas/*.json files validated: $schema, $id, title, type, required fields, examples, enum constraints)"))
+      (component
+        (name "benchmarks")
+        (status "baselined")
+        (notes "tests/bench/gateway_bench.js (12 benchmarks: JWT 2.6µs, policy eval 1.3µs, E2E 54µs, registry extract 73ns on Xeon E3-1505M)"))
+      (component
+        (name "gateway")
+        (status "source-only")
+        (notes "GatewayServer.res, Handlers.res, Types.res — no dedicated tests yet"))
+      (component
+        (name "mcp")
+        (status "source-only")
+        (notes "McpServer.res, McpTypes.res, Tools.res — 0 tests"))
+      (component
+        (name "vordr")
+        (status "source-only")
+        (notes "VordrClient.res, VordrTypes.res — 0 tests"))
+      (component
+        (name "compose")
+        (status "source-only")
+        (notes "ComposeOrchestrator.res + related — 0 tests")))
+    (working-features
+      ("JWT structural parsing via Jwt.decodeJwt"
+       "JWT expiry + issuer validation via Jwt.verifyJwt"
+       "Policy evaluation via PolicyEvaluator.evaluate"
+       "Registry extraction and glob matching"
+       "OAuth2 state/nonce generation"
+       "Default role definitions (admin/operator/viewer)")))
 
   (route-to-mvp
-    (milestones ()))
+    (milestones
+      (milestone
+        (name "crg-c-security-baseline")
+        (status "complete")
+        (completed "2026-04-04")
+        (description "Unit + smoke + security + E2E + property + schema + benchmarks"))
+      (milestone
+        (name "crg-b")
+        (status "pending")
+        (description "MCP/vordr/compose integration tests + JWT revocation + concurrent tests + real OAuth2 mock"))
+      (milestone
+        (name "crg-a")
+        (status "pending")
+        (description "Full CI integration, fuzz tests, formal verification of policy evaluation"))))
 
   (blockers-and-issues
     (critical)
-    (high)
-    (medium)
+    (high
+      (issue
+        (id "rescript-deno-module-resolution")
+        (description "ReScript compiled .res.mjs files import @rescript/core with .res.mjs extension which Deno cannot resolve. Pre-existing issue preventing compiled tests from running via deno test. Deno JS tests work around this.")
+        (workaround "Use Deno JS test files (gateway_test.js etc) for runnable test suite")))
+    (medium
+      (issue
+        (id "no-jti-revocation-list")
+        (description "No token replay prevention — JTI deny-list not implemented. Documented in AuthSecurityTest.res as contract test.")))
     (low))
 
   (critical-next-actions
-    (immediate)
-    (this-week)
-    (this-month))
+    (immediate
+      ("Fix @rescript/core .res.mjs module resolution so compiled tests can run via deno test"))
+    (this-week
+      ("Add MCP server protocol tests"
+       "Add vordr client integration tests"
+       "Implement JWT JTI deny-list and flip revocation contract test"))
+    (this-month
+      ("Add real OAuth2 mock server tests"
+       "Add concurrent request tests"
+       "Set up fuzz harness for JWT parser")))
 
-  (session-history ()))
+  (session-history
+    (session
+      (date "2026-04-04")
+      (agent "claude-sonnet-4-6")
+      (actions
+        ("Removed tests/fuzz/placeholder.txt (fake fuzz claim)"
+         "Created src/tests/AuthSecurityTest.res (22 security tests)"
+         "Created src/tests/PolicySecurityTest.res (22 security tests)"
+         "Created tests/e2e/gateway_test.js (15 E2E tests — all passing)"
+         "Created tests/property/policy_properties_test.js (20 property tests — all passing)"
+         "Created tests/schema/schema_test.js (22 schema tests — all passing)"
+         "Created tests/bench/gateway_bench.js (12 benchmarks — baselined)"
+         "Updated src/rescript.json to include auth/policy/tests directories"
+         "Compiled all 4 ReScript test files successfully"
+         "Fixed JSON Schema integer type handling in schema validator"
+         "Updated TEST-NEEDS.md with current state and benchmark baselines"
+         "Updated STATE.a2ml with session history")))))
