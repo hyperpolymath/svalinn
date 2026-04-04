@@ -1,0 +1,13 @@
+# Auto-generated K9 contract for example-compose
+# Safety tier: hunt
+
+[must]
+
+[trust]
+# (no trust sources defined)
+
+[dust]
+replace = ["hardcoded credentials in POSTGRES_PASSWORD", "hardcoded DATABASE_URL secrets"]
+
+[intend]
+example-only = true

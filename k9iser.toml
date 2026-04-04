@@ -1,0 +1,112 @@
+# k9iser manifest — wrap configs into self-validating K9 contracts
+# SPDX-License-Identifier: PMPL-1.0-or-later
+#
+# svalinn: edge gateway and policy enforcement for the container stack.
+# Safety-tier "hunt" — security-critical service that validates all others.
+
+[project]
+name = "svalinn"
+safety-tier = "hunt"  # edge security gateway — highest scrutiny
+
+# ── stapeln.toml — container layer build ─────────────────────────────────────
+
+[[configs]]
+name = "container-build"
+source = "stapeln.toml"
+format = "toml"
+must = [
+  "metadata.license == 'PMPL-1.0-or-later'",
+  "metadata.registry == 'ghcr.io/hyperpolymath'",
+  "build.runtime == 'podman'",
+  "layers.base.from starts-with 'cgr.dev/chainguard/'",   # Chainguard only
+  "layers.base.verify == true",
+  "layers.runtime.user == 'nonroot'",                     # never root
+  "security.non-root == true",
+  "security.no-new-privileges == true",
+  "security.cap-drop contains 'ALL'",
+  "security.signing.algorithm == 'ML-DSA-87'",            # post-quantum signing
+  "security.signing.provider == 'cerro-torre'",
+  "security.sbom.format == 'spdx-json'",
+  "security.sbom.include-deps == true",
+  "verify.vordr == true",
+  "verify.svalinn == true",                               # svalinn verifies itself
+  "verify.scan-on-build == true",
+  "verify.fail-on contains 'critical'",
+  "verify.fail-on contains 'high'",
+]
+trust = ["signed-by: ci-pipeline"]
+dust = []
+intend = ["production-ready", "supply-chain-verified"]
+
+# ── mustfile.toml — project requirements checklist ───────────────────────────
+
+[[configs]]
+name = "project-requirements"
+source = "mustfile.toml"
+format = "toml"
+must = [
+  "project.name == 'svalinn'",
+  "project.license starts-with 'PMPL'",
+  "requirements.must_have contains 'README.adoc'",
+  "requirements.must_have contains 'LICENSE'",
+  "requirements.must_have contains 'Justfile'",
+  "requirements.must_have contains 'spec/SPEC_VERSION'",
+  "requirements.must_not_have contains 'Makefile'",
+  "requirements.must_not_have contains 'Dockerfile'",     # Containerfile, not Dockerfile
+  "requirements.must_not_have contains '.env'",           # no .env files committed
+  "requirements.must_not_have contains 'node_modules/'",
+]
+trust = ["signed-by: ci-pipeline"]
+dust = ["remove: outdated Makefile references"]
+intend = ["production-ready"]
+
+# ── ecosystem.yaml — ecosystem integration config ────────────────────────────
+
+[[configs]]
+name = "ecosystem"
+source = "ecosystem.yaml"
+format = "yaml"
+must = [
+  "version is set",
+  "core.svalinn is set",
+  "core.vordr is set",                                    # Vordr runtime integration required
+  "core.cerro-torre is set",                             # Cerro Torre supply chain required
+  "security.strict.verify_images == true",               # strict policy verifies images
+  "security.strict.require_sbom == true",                # strict policy requires SBOM
+  "security.strict.require_signature == true",           # strict policy requires signing
+  "security.strict.read_only_root == true",
+  "core.svalinn.endpoint is non-empty",
+  "core.vordr.endpoint is non-empty",
+]
+trust = ["signed-by: ci-pipeline"]
+dust = ["remove: http:// endpoints (upgrade to https://)"]
+intend = ["production-ready", "zero-trust"]
+
+# ── examples/svalinn-compose.yaml — reference compose file ───────────────────
+
+[[configs]]
+name = "example-compose"
+source = "examples/svalinn-compose.yaml"
+format = "yaml"
+must = [
+  "version is set",
+  "services.frontend.healthcheck is set",                # all services have healthchecks
+  "services.backend.healthcheck is set",
+  "services.db.healthcheck is set",
+  "services.cache.healthcheck is set",
+  "services.frontend.restart is set",
+  "services.db.restart is set",
+  "services.db.volumes is set",                          # db data persisted
+  "services.cache.volumes is set",                       # cache data persisted
+]
+trust = []
+dust = [
+  "replace: hardcoded credentials in POSTGRES_PASSWORD",
+  "replace: hardcoded DATABASE_URL secrets",
+]
+intend = ["example-only"]
+
+[validation]
+strict = true
+auto-fix = false
+report-format = "text"

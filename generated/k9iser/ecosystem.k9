@@ -1,0 +1,18 @@
+# Auto-generated K9 contract for ecosystem
+# Safety tier: hunt
+
+[must]
+security.strict.verify_images : string { == true }
+security.strict.require_sbom : string { == true }
+security.strict.require_signature : string { == true }
+security.strict.read_only_root : string { == true }
+
+[trust]
+signed-by = "ci-pipeline"
+
+[dust]
+remove = ["http:// endpoints (upgrade to https://)"]
+
+[intend]
+production-ready = true
+zero-trust = true

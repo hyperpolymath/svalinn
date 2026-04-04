@@ -1,0 +1,14 @@
+# Auto-generated K9 contract for project-requirements
+# Safety tier: hunt
+
+[must]
+project.name : string { == 'svalinn' }
+
+[trust]
+signed-by = "ci-pipeline"
+
+[dust]
+remove = ["outdated Makefile references"]
+
+[intend]
+production-ready = true
