@@ -4,13 +4,13 @@
     "team"
   ],
   "capabilities": {
-    "primary": {
-      "description": "TODO: describe this service's primary capability",
+    "http": {
+      "description": "HTTP edge gateway providing OAuth2/OIDC authentication and container orchestration policy enforcement.",
       "endpoint": "/api",
       "panel_compatible": true,
       "protocol": "http",
       "requires_auth": false,
-      "type": "custom"
+      "type": "http"
     }
   },
   "consumes": [],
