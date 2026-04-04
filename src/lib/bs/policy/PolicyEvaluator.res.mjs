@@ -19,10 +19,7 @@ function meetsKeyTrustLevel(actual, required) {
 }
 
 function matchGlob(pattern, value) {
-  // Escape regex special chars (but not glob wildcards * and ?)
-  let escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-  // Convert glob wildcards: * → .* and ? → .
-  let regexPattern = escaped.replace(/\*/g, ".*").replace(/\?/g, ".");
+  let regexPattern = pattern.replace(/[.+^${}()|[\\]\\\\]/g, "\\$&").replace(/\\*/g, ".*").replace(/\\?/g, ".");
   return new RegExp(`^` + regexPattern + `$`).test(value);
 }
 

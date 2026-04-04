@@ -109,7 +109,7 @@ Deno.test("decodeJwt: alg:none token is parsed structurally (header readable)", 
   let noneHeader = btoa(`{"alg":"none","typ":"JWT"}`);
   let payload = btoa(`{"sub":"attacker","iss":"https://auth.example.com","aud":"svalinn","exp":9999999999,"iat":0}`);
   let noneToken = noneHeader + `.` + payload + `.`;
-  let decoded = Jwt.decodeJwt(noneToken);
+  Jwt.decodeJwt(noneToken);
   let alg = decoded.header.alg;
   Assert1.assertEquals(alg, "none");
 });
@@ -140,8 +140,8 @@ Deno.test("decodeJwt: token with missing sub claim is parseable (claim check is 
   let noSubHeader = btoa(`{"alg":"RS256","typ":"JWT"}`);
   let noSubPayload = btoa(`{"iss":"https://auth.example.com","aud":"svalinn","exp":9999999999,"iat":0}`);
   let noSubToken = noSubHeader + `.` + noSubPayload + `.sig`;
-  let decodedNoSub = Jwt.decodeJwt(noSubToken);
-  let sub = decodedNoSub.payload.sub;
+  Jwt.decodeJwt(noSubToken);
+  let sub = decoded.payload.sub;
   Assert1.assertEquals(sub === undefined, true);
 });
 
@@ -149,8 +149,8 @@ Deno.test("decodeJwt: token with missing exp claim is parseable", () => {
   let noExpHeader = btoa(`{"alg":"RS256","typ":"JWT"}`);
   let noExpPayload = btoa(`{"sub":"user","iss":"https://auth.example.com","aud":"svalinn","iat":0}`);
   let noExpToken = noExpHeader + `.` + noExpPayload + `.sig`;
-  let decodedNoExp = Jwt.decodeJwt(noExpToken);
-  let expVal = decodedNoExp.payload.exp;
+  Jwt.decodeJwt(noExpToken);
+  let expVal = decoded.payload.exp;
   Assert1.assertEquals(expVal === undefined, true);
 });
 

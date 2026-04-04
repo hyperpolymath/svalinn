@@ -41,8 +41,7 @@ Deno.test("decodeJwt parses valid JWT", () => {
   };
   let payload = btoa(JSON.stringify(payloadObj));
   let token = header + `.` + payload + `.` + "test-signature";
-  let decoded = Jwt.decodeJwt(token);
-  let decodedHeader = decoded.header;
+  Jwt.decodeJwt(token);
   let decodedPayload = decoded.payload;
   Assert1.assertEquals(decodedHeader.alg, "RS256");
   Assert1.assertEquals(decodedPayload.sub, "user123");

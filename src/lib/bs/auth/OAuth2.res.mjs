@@ -3,7 +3,7 @@
 import * as Pervasives from "@rescript/runtime/lib/es6/Pervasives.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 
-// URLSearchParams module binding removed — use global URLSearchParams constructor directly
+let URLSearchParams = {};
 
 function getAuthorizationUrl(config, state, nonce) {
   let params = new URLSearchParams({
@@ -42,9 +42,9 @@ async function exchangeCode(config, code) {
 }
 
 function generateState() {
-  const _array = new Uint8Array(32);
-  crypto.getRandomValues(_array);
-  return Array.from({length: 32}, (_, _i) => _array[_i].toString(16).padStart(2, "0")).join("");
+  new Uint8Array(32);
+  ((crypto.getRandomValues(array)));
+  return Stdlib_Array.fromInitializer(32, _i => (_array[_i]).toString(16).padStart(2, "0")).join("");
 }
 
 function generateNonce() {
@@ -52,6 +52,7 @@ function generateNonce() {
 }
 
 export {
+  URLSearchParams,
   getAuthorizationUrl,
   exchangeCode,
   generateState,
