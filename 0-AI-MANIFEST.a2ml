@@ -2,8 +2,101 @@
 # 0-AI-MANIFEST.a2ml — Universal AI Agent Entry Point
 
 [manifest]
-version = "0.2"
+version = "0.3"
 format = "a2ml"
+
+[project-identity]
+name = "Svalinn"
+one-line = "Deno-based HTTP edge gateway that validates container operation requests and delegates to Vörðr. Auth, policy, and orchestration for verified containers."
+kind = "standalone project"
+rokur-relationship = """
+Rokur is the secrets-management component for ALL components of the Svalinn
+project (not just the Svalinn core gateway — every component of the overall
+project relies on Rokur for its credentials: OAuth keys, JWT signing keys,
+TLS certs, per-service tokens, whatever any part of the system needs).
+
+Rokur's CODE and USER-FACING SURFACE both live in the Stapeln repo at
+    /var/mnt/eclipse/repos/stapeln/container-stack/rokur/
+not inside this Svalinn repo. Stapeln is the unified GUI for EVERYTHING in
+the Svalinn project, and rokur/ sits alongside the other container-stack
+subsystems (cerro-torre/, svalinn/, vordr/, selur/) that Stapeln composes.
+
+As of 2026-04-10, rokur is a scaffold (24 files, 0 source files); the other
+four container-stack subsystems are built (cerro-torre 116 source files,
+vordr 123, selur 75, in-stack svalinn 53).
+
+Naming summary:
+  Svalinn = name of both the core gateway AND the overall project
+  Stapeln = unified GUI for everything in the Svalinn project, hosts the
+            full container-stack/ monorepo of subsystems
+  Rokur   = cross-cutting secrets-management component living at
+            stapeln/container-stack/rokur/, serving all components of the
+            Svalinn project
+"""
+not-to-be-confused-with = [
+  "RGTV (Reasonably Good Token Vault) — a completely separate top-level monorepo at /var/mnt/eclipse/repos/reasonably-good-token-vault. RGTV is a zero-trust credential broker for LLM agents. It is NOT Svalinn and it is NOT Rokur.",
+]
+
+[disambiguation-gate]
+# READ THIS BEFORE DOING ANY WORK IN THIS REPO.
+#
+# Three projects are frequently conflated. They are DISTINCT:
+#
+#   1. Svalinn (THIS REPO)
+#      Purpose: Deno HTTP edge gateway for verified container operations.
+#               Validates requests, enforces policy, delegates execution
+#               to Vörðr. OAuth2/OIDC + JWT, Compose-compatible CLI.
+#      Scope:   container orchestration gateway. NOT an LLM broker.
+#               NOT a general secret store.
+#
+#   2. Rokur (LIVES IN STAPELN: /var/mnt/eclipse/repos/stapeln)
+#      Purpose: cross-cutting secrets-management component for ALL parts
+#               of the Svalinn project. Stores credentials for every
+#               component that needs them (OAuth secrets, JWT keys, TLS
+#               certs, per-service tokens — anything any component of
+#               the overall project uses).
+#      Home:    lives in the Stapeln repo because Stapeln is the unified
+#               GUI for the entire Svalinn project, and that's where
+#               users naturally find secrets management.
+#      Scope:   infrastructure dependency of every component, owned by
+#               Stapeln. It is a *component*, not a product of its own.
+#               It is NOT RGTV.
+#
+#   3. RGTV — Reasonably Good Token Vault (DIFFERENT REPO)
+#      Location: /var/mnt/eclipse/repos/reasonably-good-token-vault
+#      Purpose:  zero-trust credential broker so LLM agents can USE secrets
+#                without ever SEEING them. Agents hold opaque grants; RGTV
+#                performs the privileged action and returns the result.
+#      Scope:    its own top-level monorepo. NOT part of Svalinn. NOT Rokur.
+#                The `svalinn-cli` / `terraform-provider-svalinn` /
+#                `ansible-collection-svalinn` subdirectories currently
+#                inside RGTV are MISNAMED legacy scaffolding belonging to
+#                RGTV — they are not components of THIS Svalinn repo.
+#
+# If you came here looking for RGTV (LLM credential broker): WRONG PLACE.
+#   → go to /var/mnt/eclipse/repos/reasonably-good-token-vault
+# If you came here looking for Svalinn (container gateway or the overall
+#   project): RIGHT PLACE.
+# If you came here looking for Rokur (secrets management for any component
+#   of the Svalinn project): WRONG PLACE.
+#   → go to /var/mnt/eclipse/repos/stapeln (Rokur lives under Stapeln, the
+#   unified GUI for the whole project).
+
+ai-agent-instructions = """
+Before acting on any request in this repo, CONFIRM WITH THE USER which of
+the three projects (Svalinn / Rokur / RGTV) they actually mean. Do not
+assume — the naming collision has caused real confusion. A good opening
+prompt:
+
+  "Just to confirm — you're in the Svalinn repo (Deno container gateway).
+  Did you mean Svalinn itself, its internal Rokur secrets component, or
+  RGTV (the zero-trust credential broker for LLM agents, which is a
+  completely separate repo)?"
+
+Only proceed once the user has explicitly confirmed the intended target.
+If they meant RGTV, redirect them to /var/mnt/eclipse/repos/reasonably-
+good-token-vault.
+"""
 
 [canonical-locations]
 machine-readable = ".machine_readable/"
