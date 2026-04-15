@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Justfile - Svalinn edge shield build orchestration
 
+import? "contractile.just"
+
 default:
     @just --list
 
