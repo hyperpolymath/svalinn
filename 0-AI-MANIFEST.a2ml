@@ -16,7 +16,7 @@ project relies on Rokur for its credentials: OAuth keys, JWT signing keys,
 TLS certs, per-service tokens, whatever any part of the system needs).
 
 Rokur's CODE and USER-FACING SURFACE both live in the Stapeln repo at
-    /var/mnt/eclipse/repos/stapeln/container-stack/rokur/
+    /var/mnt/eclipse/repos/fleet-ecosystem/stapeln/container-stack/rokur/
 not inside this Svalinn repo. Stapeln is the unified GUI for EVERYTHING in
 the Svalinn project, and rokur/ sits alongside the other container-stack
 subsystems (cerro-torre/, svalinn/, vordr/, selur/) that Stapeln composes.
@@ -49,7 +49,7 @@ not-to-be-confused-with = [
 #      Scope:   container orchestration gateway. NOT an LLM broker.
 #               NOT a general secret store.
 #
-#   2. Rokur (LIVES IN STAPELN: /var/mnt/eclipse/repos/stapeln)
+#   2. Rokur (LIVES IN STAPELN: /var/mnt/eclipse/repos/fleet-ecosystem/stapeln)
 #      Purpose: cross-cutting secrets-management component for ALL parts
 #               of the Svalinn project. Stores credentials for every
 #               component that needs them (OAuth secrets, JWT keys, TLS
@@ -79,7 +79,7 @@ not-to-be-confused-with = [
 #   project): RIGHT PLACE.
 # If you came here looking for Rokur (secrets management for any component
 #   of the Svalinn project): WRONG PLACE.
-#   → go to /var/mnt/eclipse/repos/stapeln (Rokur lives under Stapeln, the
+#   → go to /var/mnt/eclipse/repos/fleet-ecosystem/stapeln (Rokur lives under Stapeln, the
 #   unified GUI for the whole project).
 
 ai-agent-instructions = """

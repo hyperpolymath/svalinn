@@ -83,3 +83,10 @@ src/dist/
 *.cmt
 *.cmti
 *.cmi
+target/
+_build/
+deps/
+.elixir_ls/
+.cache/
+build/
+dist/
