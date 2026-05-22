@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: PMPL-1.0 OR PMPL-1.0-or-later
+# SPDX-License-Identifier: PMPL-1.0 OR MPL-2.0
 import argparse
 import base64
 import json

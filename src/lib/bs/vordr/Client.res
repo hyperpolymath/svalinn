@@ -1,6 +1,6 @@
 open VordrTypes
 open McpTypes
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Vörðr MCP client for Svalinn
 
 open Types

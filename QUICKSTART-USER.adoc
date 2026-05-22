@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Template: QUICKSTART-USER.adoc — 5-minute path to working software
 // Replace svalinn, Svalinn — See README.adoc for details., just run, Svalinn started successfully. with actuals
 = svalinn — Quick Start for Users

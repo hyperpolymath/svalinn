@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 /**
  * Deno benchmarks for Svalinn core operations.
  * Run with: deno bench --allow-all --node-modules-dir=auto --no-check src/benches/svalinn_bench.ts
