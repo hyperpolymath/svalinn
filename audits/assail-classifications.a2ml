@@ -1,0 +1,59 @@
+;; SPDX-License-Identifier: MPL-2.0
+;; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+;;
+;; Assail Classifications — svalinn
+;; ================================
+;;
+;; Records `panic-attack assail` findings audited and classified as legitimate,
+;; so the next assail pass auto-suppresses them.
+;;
+;; Format mirrors panic-attack's user-classification registry protocol; see
+;; `panic-attack/.claude/CLAUDE.md` § "User-Classification Registry".
+;; panic-attack reads this file at the start of every assail pass against the
+;; repo root and flips matching findings to `suppressed: true`.
+;;
+;; Adding a new suppression therefore requires editing BOTH the classification
+;; register (this file) AND a reviewable audit document — the suppression is
+;; never a one-side source edit.
+
+(assail-classifications
+  (metadata
+    (version "1.0.0")
+    (project "svalinn")
+    (last-updated "2026-05-26")
+    (entries 4)
+    (status "active"))
+
+  ;; ─── JWT decodeJwt() in test + bench context ────────────────────────────
+  ;; All four are PA022 CryptoMisuse "decodeJwt() without jwtVerify()". Each
+  ;; usage either (a) operates on a token the test itself constructed under
+  ;; the same key, or (b) benchmarks the decode path specifically. Replacing
+  ;; with jwtVerify() would change what is being measured / tested.
+
+  (classification
+    (file "src/benches/svalinn_bench.ts")
+    (category "CryptoMisuse")
+    (classification "test-context-fixture")
+    (audit "audits/audit-jwt-decode-test-context-2026-05-26.md §1")
+    (rationale "Deno bench measures Jwt.decodeJwt performance only; jwtVerify would change what is benchmarked."))
+
+  (classification
+    (file "src/tests/IntegrationTests.test.ts")
+    (category "CryptoMisuse")
+    (classification "test-context-fixture")
+    (audit "audits/audit-jwt-decode-test-context-2026-05-26.md §2")
+    (rationale "Integration test decodes tokens it itself produced with a known signing key; signature verification is exercised separately."))
+
+  (classification
+    (file "src/tests/PropertyTests.test.ts")
+    (category "CryptoMisuse")
+    (classification "test-context-fixture")
+    (audit "audits/audit-jwt-decode-test-context-2026-05-26.md §3")
+    (rationale "Property tests inspect token structure post-decode; verification is covered by a separate property."))
+
+  (classification
+    (file "src/tests/AuthTest.res.mjs")
+    (category "CryptoMisuse")
+    (classification "test-context-fixture")
+    (audit "audits/audit-jwt-decode-test-context-2026-05-26.md §4")
+    (rationale "Compiled-from-ReScript auth test; decodes tokens produced inside the same test fixture.")))
