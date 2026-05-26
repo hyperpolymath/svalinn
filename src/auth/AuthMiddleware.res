@@ -23,18 +23,24 @@ let authenticateBearerToken = async (c: Hono.context, config: AuthTypes.Types.au
   | Some(a) if String.startsWith(a, "Bearer ") => {
       let token = String.substring(a, ~start=7, ~end=String.length(a))
       try {
-        let payload = switch config.oidc {
-        | Some(oidc) => await Jwt.verifyJwt(token, (oidc :> Jwt.Types.oidcConfig))
-        | None => {
-            let decoded = Jwt.decodeJwt(token)
-            %raw(`decoded.payload`)
-          }
+        // Require OIDC config for OIDC/OAuth2 bearer-token methods. Without a
+        // JWKS source we have no way to verify signatures; failing closed is
+        // the only safe behaviour. Previously this branch silently decoded the
+        // payload of an unverified JWT and returned authenticated: true.
+        let oidc = switch config.oidc {
+        | Some(o) => o
+        | None =>
+          failwith(
+            "Bearer-token authentication requires OIDC configuration (no JWKS source to verify against)",
+          )
         }
+        let payload = await Jwt.verifyJwt(token, (oidc :> Jwt.Types.oidcConfig))
+        let scope: option<string> = %raw(`payload.scope`)
         {
           authenticated: true,
           method: #oidc,
-          subject: %raw("payload.sub"),
-          scopes: %raw("payload.scope")->Option.map(s => String.split(s, " "))->Option.getOr([]),
+          subject: payload.sub,
+          scopes: scope->Option.map(s => String.split(s, " "))->Option.getOr([]),
           token: Obj.magic(payload),
         }
       } catch {
@@ -63,7 +69,7 @@ let authMiddleware = (config: AuthTypes.Types.authConfig) => {
         | #none => {authenticated: true, method: #none}
         | _ => {authenticated: false, method: #none, error: "Method not implemented"}
         }
-        
+
         if res.authenticated {
           result := res
         }
