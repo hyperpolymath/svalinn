@@ -110,8 +110,8 @@ Deno.test("decodeJwt: alg:none token is parsed structurally (header readable)", 
   let payload = btoa(`{"sub":"attacker","iss":"https://auth.example.com","aud":"svalinn","exp":9999999999,"iat":0}`);
   let noneToken = noneHeader + `.` + payload + `.`;
   let decoded = Jwt.decodeJwt(noneToken);
-  let alg = decoded.header.alg;
-  Assert1.assertEquals(alg, "none");
+  let header = decoded.header;
+  Assert1.assertEquals(header.alg, "none");
 });
 
 Deno.test("verifyJwt: rejects alg:none token (algorithm confusion attack)", async () => {
@@ -140,18 +140,18 @@ Deno.test("decodeJwt: token with missing sub claim is parseable (claim check is 
   let noSubHeader = btoa(`{"alg":"RS256","typ":"JWT"}`);
   let noSubPayload = btoa(`{"iss":"https://auth.example.com","aud":"svalinn","exp":9999999999,"iat":0}`);
   let noSubToken = noSubHeader + `.` + noSubPayload + `.sig`;
-  let decodedNoSub = Jwt.decodeJwt(noSubToken);
-  let sub = decodedNoSub.payload.sub;
-  Assert1.assertEquals(sub === undefined, true);
+  let decoded = Jwt.decodeJwt(noSubToken);
+  let payload = decoded.payload;
+  Assert1.assertEquals(payload.sub, undefined);
 });
 
 Deno.test("decodeJwt: token with missing exp claim is parseable", () => {
   let noExpHeader = btoa(`{"alg":"RS256","typ":"JWT"}`);
   let noExpPayload = btoa(`{"sub":"user","iss":"https://auth.example.com","aud":"svalinn","iat":0}`);
   let noExpToken = noExpHeader + `.` + noExpPayload + `.sig`;
-  let decodedNoExp = Jwt.decodeJwt(noExpToken);
-  let expVal = decodedNoExp.payload.exp;
-  Assert1.assertEquals(expVal === undefined, true);
+  let decoded = Jwt.decodeJwt(noExpToken);
+  let payload = decoded.payload;
+  Assert1.assertEquals(payload.exp, undefined);
 });
 
 Deno.test("token replay: revocation contract documented (placeholder for JTI deny-list)", () => {

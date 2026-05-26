@@ -59,10 +59,12 @@ Deno.testSync("decodeJwt parses valid JWT", () => {
   let token = `${header}.${payload}.${signature}`
 
   let decoded = Jwt.decodeJwt(token)
-  let decodedHeader = decoded["header"]
+  // Use decoded explicitly so the binding isn't optimised away (ReScript
+  // doesn't see the %raw references below).
+  Assert.assertEquals(decoded.headerB64, header)
   let decodedPayload: AuthTypes.Types.tokenPayload = %raw(`decoded.payload`)
 
-  Assert.assertEquals(%raw(`decodedHeader.alg`), "RS256")
+  Assert.assertEquals(%raw(`decoded.header.alg`), "RS256")
   Assert.assertEquals(decodedPayload.sub, "user123")
   Assert.assertEquals(decodedPayload.iss, "https://auth.example.com")
 })

@@ -37,10 +37,9 @@ function base64UrlDecode(str) {
   let mod4 = base64.length % 4;
   let padding = mod4 > 0 ? "=".repeat(4 - mod4 | 0) : "";
   let binary = atob(base64 + padding);
-  let bytes = new Uint8Array(binary.length);
-  for (let _i = 0, _i_finish = binary.length; _i < _i_finish; ++_i) {
-    ((bytes[i] = binary.charCodeAt(i)));
-  }
+  let len = binary.length;
+  let bytes = new Uint8Array(len);
+  (((function() { for (var i = 0; i < len; i++) { bytes[i] = binary.charCodeAt(i); } })()));
   return bytes;
 }
 
@@ -49,15 +48,121 @@ function decodeJwt(token) {
   if (parts.length !== 3) {
     Pervasives.failwith("Invalid JWT format");
   }
+  let headerB64 = parts[0];
+  let payloadB64 = parts[1];
+  let signatureB64 = parts[2];
   let decodePart = p => JSON.parse(atob(p.replace(/-/g, "+").replace(/_/g, "/")));
   return {
-    header: decodePart(parts[0]),
-    payload: decodePart(parts[1])
+    headerB64: headerB64,
+    payloadB64: payloadB64,
+    signatureB64: signatureB64,
+    header: decodePart(headerB64),
+    payload: decodePart(payloadB64)
   };
 }
 
+function algToWebCrypto(alg) {
+  switch (alg) {
+    case "ES256" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "ECDSA", namedCurve: "P-256", hash: "SHA-256"},
+          {name: "ECDSA", hash: "SHA-256"}
+        ]
+      };
+    case "ES384" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "ECDSA", namedCurve: "P-384", hash: "SHA-384"},
+          {name: "ECDSA", hash: "SHA-384"}
+        ]
+      };
+    case "ES512" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "ECDSA", namedCurve: "P-521", hash: "SHA-512"},
+          {name: "ECDSA", hash: "SHA-512"}
+        ]
+      };
+    case "EdDSA" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "Ed25519"},
+          {name: "Ed25519"}
+        ]
+      };
+    case "PS256" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "RSA-PSS", hash: "SHA-256"},
+          {name: "RSA-PSS", saltLength: 32}
+        ]
+      };
+    case "PS384" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "RSA-PSS", hash: "SHA-384"},
+          {name: "RSA-PSS", saltLength: 48}
+        ]
+      };
+    case "PS512" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "RSA-PSS", hash: "SHA-512"},
+          {name: "RSA-PSS", saltLength: 64}
+        ]
+      };
+    case "RS256" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "RSASSA-PKCS1-v1_5", hash: "SHA-256"},
+          {name: "RSASSA-PKCS1-v1_5"}
+        ]
+      };
+    case "RS384" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "RSASSA-PKCS1-v1_5", hash: "SHA-384"},
+          {name: "RSASSA-PKCS1-v1_5"}
+        ]
+      };
+    case "RS512" :
+      return {
+        TAG: "Ok",
+        _0: [
+          {name: "RSASSA-PKCS1-v1_5", hash: "SHA-512"},
+          {name: "RSASSA-PKCS1-v1_5"}
+        ]
+      };
+    case "none" :
+      return {
+        TAG: "Error",
+        _0: "Algorithm 'none' is rejected for security reasons"
+      };
+    default:
+      return {
+        TAG: "Error",
+        _0: `Unsupported JWT algorithm: ` + alg
+      };
+  }
+}
+
 async function verifyJwt(token, config) {
-  decodeJwt(token);
+  let decoded = decodeJwt(token);
+  let alg = decoded.header.alg;
+  let kid = decoded.header.kid;
+  let pair = algToWebCrypto(alg);
+  let match;
+  match = pair.TAG === "Ok" ? pair._0 : Pervasives.failwith(pair._0);
   let payload = decoded.payload;
   let now = Date.now() / 1000.0;
   let exp = payload.exp;
@@ -68,13 +173,17 @@ async function verifyJwt(token, config) {
     Pervasives.failwith(`Invalid issuer: expected ` + config.issuer + `, got ` + payload.iss);
   }
   let jwks = await fetchJwks(config.jwksUri);
-  let kid = header.kid;
   let keyOpt = jwks.keys.find(k => k.kid === kid);
-  if (keyOpt !== undefined) {
-    return payload;
-  } else {
-    return Pervasives.failwith(`Key not found: ` + kid);
+  let jwk = keyOpt !== undefined ? keyOpt : Pervasives.failwith(`Key not found: ` + kid);
+  let formatJwk = "jwk";
+  let cryptoKey = await crypto.subtle.importKey(formatJwk, jwk, match[0], false, ["verify"]);
+  let signingInput = new TextEncoder().encode(decoded.headerB64 + "." + decoded.payloadB64);
+  let signatureBytes = base64UrlDecode(decoded.signatureB64);
+  let ok = await crypto.subtle.verify(match[1], cryptoKey, signatureBytes, signingInput);
+  if (!ok) {
+    Pervasives.failwith("JWT signature verification failed");
   }
+  return payload;
 }
 
 let jwksCacheTtl = 3600000.0;
@@ -87,6 +196,7 @@ export {
   fetchJwks,
   base64UrlDecode,
   decodeJwt,
+  algToWebCrypto,
   verifyJwt,
 }
 /* jwksCache Not a pure module */

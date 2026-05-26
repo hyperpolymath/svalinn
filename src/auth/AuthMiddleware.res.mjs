@@ -2,7 +2,8 @@
 
 import * as Jwt from "./Jwt.res.mjs";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Pervasives from "@rescript/runtime/lib/es6/Pervasives.js";
+import * as Core__Option from "@rescript/core/src/Core__Option.res.mjs";
 
 let Hono = {};
 
@@ -24,13 +25,15 @@ async function authenticateBearerToken(c, config) {
   }
   let token = auth.substring(7, auth.length);
   try {
-    let oidc = config.oidc;
-    let payload = oidc !== undefined ? await Jwt.verifyJwt(token, oidc) : (Jwt.decodeJwt(token), decoded.payload);
+    let o = config.oidc;
+    let oidc = o !== undefined ? o : Pervasives.failwith("Bearer-token authentication requires OIDC configuration (no JWKS source to verify against)");
+    let payload = await Jwt.verifyJwt(token, oidc);
+    let scope = payload.scope;
     return {
       authenticated: true,
       method: "oidc",
       subject: payload.sub,
-      scopes: Stdlib_Option.getOr(Stdlib_Option.map(payload.scope, s => s.split(" ")), []),
+      scopes: Core__Option.getOr(Core__Option.map(scope, s => s.split(" ")), []),
       token: payload
     };
   } catch (exn) {

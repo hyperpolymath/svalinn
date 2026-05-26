@@ -6,7 +6,9 @@
 
 open AuthTypes
 
-module URLSearchParams = {
+// Named `Usp` (not `URLSearchParams`) so the module placeholder doesn't
+// shadow the global `URLSearchParams` constructor in the compiled output.
+module Usp = {
   type t
   @new external make: JSON.t => t = "URLSearchParams"
   @send external toString: t => string = "toString"
@@ -23,7 +25,7 @@ type tokenResponse = {
 }
 
 let getAuthorizationUrl = (config: Types.oauth2Config, state: string, ~nonce: option<string>=?) => {
-  let params = URLSearchParams.make(
+  let params = Usp.make(
     Obj.magic({
       "response_type": "code",
       "client_id": config.clientId,
@@ -34,15 +36,15 @@ let getAuthorizationUrl = (config: Types.oauth2Config, state: string, ~nonce: op
   )
 
   switch nonce {
-  | Some(n) => params->URLSearchParams.set("nonce", n)
+  | Some(n) => params->Usp.set("nonce", n)
   | None => ()
   }
 
-  `${config.authorizationEndpoint}?${params->URLSearchParams.toString}`
+  `${config.authorizationEndpoint}?${params->Usp.toString}`
 }
 
 let exchangeCode = async (config: Types.oauth2Config, code: string): tokenResponse => {
-  let params = URLSearchParams.make(
+  let params = Usp.make(
     Obj.magic({
       "grant_type": "authorization_code",
       "code": code,
@@ -57,7 +59,7 @@ let exchangeCode = async (config: Types.oauth2Config, code: string): tokenRespon
     {
       "method": #POST,
       "headers": Fetch.Headers.fromObject({"Content-Type": "application/x-www-form-urlencoded"}),
-      "body": Fetch.Body.string(params->URLSearchParams.toString),
+      "body": Fetch.Body.string(params->Usp.toString),
     },
   )
 
@@ -70,10 +72,13 @@ let exchangeCode = async (config: Types.oauth2Config, code: string): tokenRespon
 }
 
 let generateState = (): string => {
-  let _array = Uint8Array.fromLength(32)
-  %raw(`crypto.getRandomValues(array)`)
-  Array.fromInitializer(~length=32, _i => %raw("_array[_i]")->Int.toStringWithRadix(~radix=16)->String.padStart(2, "0"))
-  ->Array.joinUnsafe("")
+  // Single self-contained JS expression so ReScript doesn't elide the
+  // intermediate bindings via opaque %raw references.
+  %raw(`(function() {
+    const a = new Uint8Array(32);
+    crypto.getRandomValues(a);
+    return Array.from(a, b => b.toString(16).padStart(2, "0")).join("");
+  })()`)
 }
 
 let generateNonce = () => generateState()
