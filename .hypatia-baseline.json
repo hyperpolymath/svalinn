@@ -1,0 +1,16 @@
+[
+  {
+    "severity": "info",
+    "rule_module": "cicd_rules",
+    "type": "banned_language_file",
+    "file_pattern": "**/*.res",
+    "note": "ReScript is svalinn's legacy primary application language. The estate is migrating ReScript -> AffineScript (see .claude/CLAUDE.md); tracked .res are grandfathered via this file_pattern until rewritten. Do not add new .res."
+  },
+  {
+    "severity": "info",
+    "rule_module": "cicd_rules",
+    "type": "banned_language_file",
+    "file": "tools/mvp/svalinn_gate.py",
+    "note": "MVP/prototype gateway tool (Python sibling of the approved carve-out tools/mvp/svalinn_gateway.ts). Not production-tier; rewrite in AffineScript when svalinn is promoted to production."
+  }
+]
