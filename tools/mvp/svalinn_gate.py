@@ -1,5 +1,6 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 #!/usr/bin/env python3
-# SPDX-License-Identifier: PMPL-1.0 OR MPL-2.0
 import argparse
 import base64
 import json

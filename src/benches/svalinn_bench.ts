@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 /**
  * Deno benchmarks for Svalinn core operations.
  * Run with: deno bench --allow-all --node-modules-dir=auto --no-check src/benches/svalinn_bench.ts
