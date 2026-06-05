@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# STATE.a2ml — Svalinn project state
+# STATE.a2ml — Svalinn project state checkpoint
 [metadata]
 project = "svalinn"
 version = "0.1.0"
-last-updated = "2026-04-04"
+last-updated = "2026-06-05"
 status = "active"
-session = "converted from scheme — 2026-04-11"
+session = "machine-readable checkpoint — 2026-06-05"
 
 [project-context]
 name = "Svalinn"
-purpose = """Unit + smoke + security + E2E + property + schema + benchmarks"""
+purpose = """ReScript edge verification gateway: gatekeeper policy enforcement, single-node FIFO scheduling, and vörðr delegation. MVP surface = POST /verify (validate a bundle against trust store + policy) + POST /run (schedule + start a container after verification). ~7,050 LOC ReScript; migrating to Ephapax (Decision D3, migrate-then-prove)."""
 completion-percentage = 35
 
 [position]
@@ -19,26 +19,49 @@ phase = "crg-c-testing"   # design | implementation | testing | maintenance | ar
 maturity = "experimental"  # experimental | alpha | beta | production | lts
 
 [route-to-mvp]
+# Deliverables from MVP.adoc; production gateway is the Ephapax port (Stage 2 of HANDOFF.adoc)
 milestones = [
-  # No milestones recorded
+  "Stage 0 — Ephapax readiness spike (gates everything; root question: is Ephapax a runnable application language today?)",
+  "Stage 1 — Migration map: BLOCKER-LINEAGE.adoc (ring-0 critical chain → ring-2 orthogonal)",
+  "Stage 2 — Port ≈27 src/ modules + ui/ to Ephapax; security wins structural (no Obj.magic, linear JWT/JTI revocation)",
+  "After migration — discharge language-agnostic specs (Appendix E of HANDOFF.adoc); SPARK properties (cerro-torre-integration.adoc §6.2)",
 ]
 
 [blockers-and-issues]
 issues = [
-  # No blockers recorded
+  "Ephapax readiness unknown — spike required before any porting begins (Stage 0, HANDOFF.adoc)",
+  "20+ Obj.magic casts in security paths (AuthMiddleware, OAuth2, McpServer, ComposeOrchestrator, PolicyStore) — discharged structurally by the migration, not patched in ReScript",
+  "JWT/JTI revocation hardcoded hasRevocationList=false — discharged structurally by Ephapax linear exactly-once tokens",
+  "Security issue #13 (19 Critical/High: decodeJwt() without jwtVerify(), JSON.parseExn) — discharged structurally by the migration, closes with the auth port PR",
+  "PR #32 (draft) contradicts D3 (targets AffineScript, not Ephapax) — flag for maintainer decision before closing/redirecting",
+  "CI main red on pre-existing ReScript breakage (Type Check / Lint / Format / Spec / Schema / Doctor); 53 ReScript unit/security tests do not execute under Deno (@rescript/core resolution) — these vanish with the migration, do NOT fix in ReScript",
 ]
+
+[ci-reality]
+# Do not treat the ReScript CI failures as bugs to fix — they are superseded by D3
+red-jobs = "Type Check, Lint, Format, Spec, Schema, Doctor (pre-existing ReScript breakage)"
+non-running-tests = "53 ReScript unit/security tests do not run under Deno (@rescript/core .res.mjs resolution)"
+disposition = "vanish on migration; do not patch"
+closed-issues = "Issue #12 (JWT signature verification) — wired in commit 6863383, closed"
 
 [critical-next-actions]
 actions = [
-  "Fix @rescript/core .res.mjs module resolution so compiled tests can run via deno test",
-  "Add MCP server protocol tests",
-  "Add vordr client integration tests",
-  "Implement JWT JTI deny-list and flip revocation contract test",
-  "Add real OAuth2 mock server tests",
-  "Add concurrent request tests",
-  "Set up fuzz harness for JWT parser",
+  "Run Ephapax readiness spike (requires ephapax repo in scope; see HANDOFF.adoc Stage 0)",
+  "If spike is green: write docs/ephapax-migration/BLOCKER-LINEAGE.adoc (Stage 1)",
+  "If spike is green: port src/ + ui/ to Ephapax — make Obj.magic impossible by type, revocation true-by-construction (Stage 2)",
+  "If spike is red (MUST capability absent): surface capability matrix and D3 alternatives to maintainer; do NOT improvise",
+]
+
+[recent-history]
+merged = [
+  "commit 6863383 — JWT signature verification wired (closes issue #12)",
+  "PR #35 — Ephapax migration handoff (open; Ephapax migration branch; this commit adds to it)",
+]
+decisions = [
+  "D3 — svalinn migrates ReScript → Ephapax (migrate-then-prove); authority: docs/ephapax-migration/HANDOFF.adoc",
 ]
 
 [maintenance-status]
-last-run-utc = "2026-04-04T00:00:00Z"
-last-result = "unknown"  # unknown | pass | warn | fail
+last-run-utc = "2026-06-05T00:00:00Z"
+last-result = "fail"  # unknown | pass | warn | fail
+notes = "CI main red on pre-existing ReScript breakage. Not to be fixed in ReScript — superseded by D3 migration."

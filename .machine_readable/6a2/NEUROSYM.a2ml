@@ -2,20 +2,31 @@
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # NEUROSYM.a2ml — Neurosymbolic integration metadata
+# Configuration for Hypatia scanning and symbolic reasoning.
 [metadata]
 version = "0.1.0"
-last-updated = "2026-04-11"
+last-updated = "2026-06-05"
 
 [hypatia-config]
 scan-enabled = true
-scan-depth = "standard"  # quick | standard | deep
+scan-depth = "standard"
 report-format = "logtalk"
 
-[symbolic-rules]
-# Custom symbolic rules for this project
-# - { name = "no-unsafe-ffi", pattern = "believe_me|unsafeCoerce", severity = "critical" }
+[symbolic]
+prover = "none yet — svalinn is pre-proof; language must be finalised first (D3)"
+neural-backend = "ECHIDNA integration planned post-migration; not active"
+abstraction = "type-safety + schema/property tests in the current ReScript phase; dependent-type proofs come after the Ephapax migration"
 
-[neural-config]
-# Neural pattern detection settings
-# confidence-threshold = 0.85
-# model = "hypatia-v2"
+[proof-obligations]
+# No machine-checked proofs yet — proofs follow the Ephapax migration (migrate-then-prove)
+discharged = []
+open = [
+  "Policy determinism — allow ∩ deny composition + monotonicity (language-agnostic spec; discharge post-migration)",
+  "JWT single-use & revocation — true-by-construction via Ephapax linear exactly-once tokens (post-migration)",
+  "No unchecked boundary casts — structural via Ephapax typed decoders (kills 20+ Obj.magic in current ReScript)",
+  "JSON-Schema conformance of all 9 gateway types (post-migration)",
+  "SPARK properties planned in docs/cerro-torre-integration.adoc §6.2: attestation sig, key lookup, threshold sig, log inclusion, policy eval",
+]
+
+[honest-bounds]
+notes = """Svalinn is currently in the ReScript / pre-proof phase. Proving over the soon-to-be-replaced ReScript is waste; the estate rule is migrate-then-prove. Property and schema tests provide the current safety net. The 20+ Obj.magic casts and the JWT/JTI revocation stub (hasRevocationList=false) are security debt discharged structurally by the Ephapax migration, not by patching or proving ReScript."""

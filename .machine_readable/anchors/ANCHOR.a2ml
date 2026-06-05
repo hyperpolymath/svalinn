@@ -16,3 +16,19 @@ ssg:
 # Relationships
 parents:
   - "org.hyperpolymath.boj-server"
+
+# Realignments — significant repository realignments on record
+realignments:
+  - date: "2026-06-05"
+    kind: "migration decision + machine-readable checkpoint"
+    summary: >
+      Decision D3 recorded: svalinn migrates ReScript → Ephapax (migrate-then-prove).
+      Migration discharges security debt structurally — 20+ Obj.magic casts in
+      security paths and JWT/JTI revocation (hasRevocationList=false) become
+      impossible by type via Ephapax typed boundary decoders and linear
+      exactly-once tokens. Issue #13 (19 Critical/High security findings)
+      discharged structurally by the migration. Issue #12 (JWT signature
+      verification) already closed (commit 6863383). CI main is red on
+      pre-existing ReScript breakage; do not fix in ReScript — it vanishes
+      with the migration. Authority: docs/ephapax-migration/HANDOFF.adoc.
+    authority: "docs/ephapax-migration/HANDOFF.adoc"

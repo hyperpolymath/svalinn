@@ -1,20 +1,27 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# ECOSYSTEM.a2ml — Svalinn ecosystem position
+# ECOSYSTEM.a2ml — Ecosystem position
 [metadata]
-version = "1.0"
-last-updated = "2026-04-11"
+project = "svalinn"
+ecosystem = "hyperpolymath"
+last-updated = "2026-06-05"
 
-[project]
-name = "Svalinn"
-purpose = ""
-role = ""
-
-[position-in-ecosystem]
-category = ""
+[position]
+type = "component"
+role = """Edge verification gateway — the gatekeeper policy enforcement and container scheduling layer. Validates bundles against a trust store before any container starts; delegates execution to vörðr and captures audit metadata."""
 
 [related-projects]
 projects = [
-  # No related projects recorded
+  "ochrance — estate sibling; neurosymbolic filesystem-integrity verifier; svalinn's migration (D3) was disposed from the ochrance proof thread",
+  "ochrance-framework — architecture + docs for the ochrance proof system",
+  "ephapax — migration target (D3); Ephapax replaces all svalinn ReScript; spike required to confirm readiness",
+  "vordr — container runtime; svalinn delegates execution via vörðr CLI/API",
+  "echidna — Rust/Julia neurosymbolic prover; planned post-migration integration",
+  "boj-server — SSG/build host (casket engine); ANCHOR parent (see anchors/ANCHOR.a2ml)",
+  "valence-shell — accountable state transitions; sibling in the estate",
 ]
+
+[integrations]
+# detail in .machine_readable/integrations/*.a2ml (not yet written)
+declared = [ "vordr", "ephapax (planned)", "echidna (planned, post-migration)" ]
