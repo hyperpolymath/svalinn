@@ -7,9 +7,10 @@
 
 This is a *self-contained* charter for a delegated Claude Code session that will
 replace svalinn's ReScript with *Ephapax*. It was disposed from the Ochránce
-proof thread (see `ochrance/docs/PROOFS.adoc` — Decision *D3* and the Disposed
-Tracks). Read it top to bottom before doing anything: the first task is a
-viability *spike*, not the port. Nothing here depends on chat memory.
+proof thread (provenance: `ochrance/docs/PROOFS.adoc`, Decision *D3* — *restated
+in full below*; you do *not* need the ochrance repo in scope). Read it top to
+bottom before doing anything: the first task is a viability *spike*, not the
+port. Nothing here depends on chat memory.
 
 toc::[]
 
@@ -100,10 +101,11 @@ Write `docs/ephapax-migration/BLOCKER-LINEAGE.adoc` (AsciiDoc, SPDX
 `PMPL-1.0 OR MPL-2.0`). Follow the estate *Critical Chain* methodology
 (`.machine_readable/6a2/methodology.a2ml`): Phase-0 finds the critical chain;
 classify into rings; weight MUST(3×) / SHOULD(2×) / COULD(1×); convergent budget
-structural70 / corrective20 / perfective10. Use the *same representation format*
-as the analogous `BLOCKER-LINEAGE.adoc` in the affinescript repo (ring-0 critical
-chain / ring-1 relevant-around / ring-2 orthogonal) — but the *target language is
-Ephapax*.
+structural70 / corrective20 / perfective10. The representation format is *fully specified below* (ring-0 critical chain /
+ring-1 relevant-around / ring-2 orthogonal); the *target language is Ephapax*.
+A worked example of this exact format lives as the analogous
+`BLOCKER-LINEAGE.adoc` in the `affinescript` repo — consult it *only if that repo
+is already in your scope*; otherwise do not chase it, the structure here suffices.
 
 Required sections:
 
