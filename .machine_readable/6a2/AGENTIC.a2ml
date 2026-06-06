@@ -2,9 +2,10 @@
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # AGENTIC.a2ml — AI agent constraints and capabilities
+# Defines what AI agents can and cannot do in this repository.
 [metadata]
 version = "0.1.0"
-last-updated = "2026-04-11"
+last-updated = "2026-06-05"
 
 [agent-permissions]
 can-edit-source = true
@@ -15,11 +16,24 @@ can-create-files = true
 
 [agent-constraints]
 # What AI agents must NOT do:
-# - Never use banned language patterns (believe_me, unsafeCoerce, etc.)
+# - Never use banned language patterns (Obj.magic, believe_me, unsafeCoerce, etc.) in new code
+# - Never write new TypeScript (tools/mvp/svalinn_gateway.ts is the one approved exemption — do not add to that list)
 # - Never commit secrets or credentials
-# - Never use banned languages (TypeScript, Python, Go, etc.)
-# - Never place state files in repository root (must be in .machine_readable/)
-# - Never use AGPL license (use MPL-2.0)
+# - Never use banned languages (Python, Go, Node.js, etc. — see .claude/CLAUDE.md language policy)
+# - Never place state/meta files in repository root (must live under .machine_readable/)
+# - Never use AGPL (license is MPL-2.0)
+# - Never patch the pre-existing ReScript CI breakage — it is superseded by the Ephapax migration (D3)
+# - Never start porting to Ephapax without first completing the readiness spike (Stage 0 of HANDOFF.adoc)
+# - Never improvise an alternative migration target if the spike fails — surface to maintainer
+
+[agent-workflow]
+# How AI agents should work here:
+migration-campaign = "resume from docs/ephapax-migration/HANDOFF.adoc — the authoritative, self-contained charter; it survives context compaction"
+entry-check = "confirm both svalinn AND ephapax repos are in scope before starting Stage 0; if not, stop and add ephapax"
+spike-gate = "Stage 0 (readiness spike) gates Stage 1 (migration map) and Stage 2 (the port); do not skip"
+security-debt = "Obj.magic + JWT/JTI revocation + issue #13 are discharged structurally by migration, not by patching"
+model-guidance = "Sonnet for the migration; escalate to Opus only if the spike turns into design work or D3 must be re-litigated"
+pr-discipline = "develop on claude/* branch assigned; clear commit messages; push; open draft PR; never push to another branch"
 
 [maintenance-integrity]
 fail-closed = true
@@ -29,6 +43,6 @@ require-rerun-after-fix = true
 release-claim-requires-hard-pass = true
 
 [automation-hooks]
-# on-enter: Read 0-AI-MANIFEST.a2ml, then STATE.a2ml
+# on-enter: Read .machine_readable/6a2/STATE.a2ml, then docs/ephapax-migration/HANDOFF.adoc
 # on-exit: Update STATE.a2ml with session outcomes
 # on-commit: Run just validate-rsr
