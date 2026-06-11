@@ -1,19 +1,17 @@
 # SPDX-License-Identifier: MPL-2.0
 name: CI
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
 permissions:
   contents: read
-
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -22,7 +20,6 @@ jobs:
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:
           deno-version: v2.x
-
       - name: Cache Deno dependencies
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -32,14 +29,13 @@ jobs:
           key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json', '**/deno.lock') }}
           restore-keys: |
             ${{ runner.os }}-deno-
-
       - name: Run linter
         run: deno lint
         working-directory: src
-
   format:
     name: Format Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -48,14 +44,13 @@ jobs:
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:
           deno-version: v2.x
-
       - name: Check formatting
         run: deno fmt --check
         working-directory: src
-
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -64,7 +59,6 @@ jobs:
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:
           deno-version: v2.x
-
       - name: Cache Deno dependencies
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -74,14 +68,13 @@ jobs:
           key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json', '**/deno.lock') }}
           restore-keys: |
             ${{ runner.os }}-deno-
-
       - name: Run type checking
         run: deno check main.ts compose/cli.ts
         working-directory: src
-
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -90,7 +83,6 @@ jobs:
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:
           deno-version: v2.x
-
       - name: Cache Deno dependencies
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -100,14 +92,13 @@ jobs:
           key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json', '**/deno.lock') }}
           restore-keys: |
             ${{ runner.os }}-deno-
-
       - name: Run tests
         run: deno test --allow-net --allow-read --allow-env
         working-directory: src
-
   extended-tests:
     name: Extended Tests (E2E / Property / Schema)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -116,7 +107,6 @@ jobs:
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:
           deno-version: v2.x
-
       - name: Cache Deno dependencies
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -126,19 +116,16 @@ jobs:
           key: ${{ runner.os }}-deno-ext-${{ hashFiles('**/deno.json', '**/deno.lock') }}
           restore-keys: |
             ${{ runner.os }}-deno-ext-
-
       - name: Run E2E tests
         run: deno test --allow-net --allow-read --allow-env tests/e2e/
-
       - name: Run property tests
         run: deno test --allow-net --allow-read --allow-env tests/property/
-
       - name: Run schema tests
         run: deno test --allow-net --allow-read --allow-env tests/schema/
-
   build:
     name: Build Binaries
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [lint, format, typecheck, test, extended-tests]
     steps:
       - name: Checkout repository
@@ -148,7 +135,6 @@ jobs:
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
         with:
           deno-version: v2.x
-
       - name: Cache Deno dependencies
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -158,15 +144,12 @@ jobs:
           key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json', '**/deno.lock') }}
           restore-keys: |
             ${{ runner.os }}-deno-
-
       - name: Build svalinn binary
         run: deno compile --allow-net --allow-read --allow-env -o dist/svalinn main.ts
         working-directory: src
-
       - name: Build svalinn-compose binary
         run: deno compile --allow-net --allow-read --allow-env -o dist/svalinn-compose compose/cli.ts
         working-directory: src
-
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.0
         with:

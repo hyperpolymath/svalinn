@@ -15,6 +15,7 @@ jobs:
   build:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       matrix:
         include:
@@ -67,6 +68,7 @@ jobs:
   sbom:
     name: Generate SBOM
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     needs: build
     steps:
       - name: Checkout
@@ -95,6 +97,7 @@ jobs:
   provenance:
     name: Generate Provenance
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     needs: build
     permissions:
       id-token: write
@@ -151,6 +154,7 @@ jobs:
   release:
     name: Create Release
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     needs: [build, sbom, provenance]
     permissions:
       contents: write
