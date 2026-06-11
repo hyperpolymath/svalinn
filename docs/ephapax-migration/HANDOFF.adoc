@@ -1,0 +1,233 @@
+// SPDX-License-Identifier: PMPL-1.0 OR MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Svalinn → Ephapax Migration — Handoff Charter
+:toc: macro
+:sectnums:
+:sectnumlevels: 3
+
+This is a *self-contained* charter for a delegated Claude Code session that will
+replace svalinn's ReScript with *Ephapax*. It was disposed from the Ochránce
+proof thread (provenance: `ochrance/docs/PROOFS.adoc`, Decision *D3* — *restated
+in full below*; you do *not* need the ochrance repo in scope). Read it top to
+bottom before doing anything: the first task is a viability *spike*, not the
+port. Nothing here depends on chat memory.
+
+toc::[]
+
+== Role
+
+You are picking up the *svalinn → Ephapax migration*. Your job is *not* to write
+proofs. It is to migrate svalinn's ReScript to Ephapax and, before any porting,
+to determine whether that migration is even viable today. The estate rule is
+*migrate-then-prove*: proofs come after the language is final, because proving
+the about-to-be-deleted ReScript is waste.
+
+== Precondition — repository scope
+
+This session *MUST* have both `hyperpolymath/svalinn` *and* `hyperpolymath/ephapax`
+in repository scope. The root task (the readiness spike) reads the ephapax repo.
+
+* If `ephapax` is *not* in scope: *STOP* and add it (use `list_repos` /
+  `add_repo` if available, otherwise have the session re-created with both
+  repos). Do not proceed on svalinn alone — that is exactly the wall that forced
+  this hand-off.
+
+== Decision on record (D3)
+
+svalinn migrates ReScript → *Ephapax*. Ephapax replaces *all* the ReScript.
+*AffineScript is not the target* — it surfaced only as a format exemplar for the
+migration map. The migration discharges svalinn's security debt *structurally*
+(typed boundary decoders + linear exactly-once tokens), not by patching ReScript.
+
+== Deliverables (strictly in order)
+
+. *Readiness spike* — gates everything below (Stage 0).
+. *Migration map* — `docs/ephapax-migration/BLOCKER-LINEAGE.adoc` (Stage 1).
+. *The port* — only if the spike is green (Stage 2).
+
+== Stage 0 — Readiness spike
+
+This is the one thing the originating session could not do (ephapax was out of
+its scope). *Root question:* is Ephapax an implementable _application_ language
+today, or still a proof-level calculus? svalinn is a network HTTP gateway; it
+needs a real runtime.
+
+=== Capability matrix
+
+Read the ephapax repo and produce this matrix. For each capability mark
+*PRESENT* / *FFI-REACHABLE* / *ABSENT*, with a file/path citation.
+
+[cols="3,1,2,2",options="header"]
+|===
+| Capability | Tier | Mark | Citation (ephapax path)
+
+| Toolchain emitting a *runnable* artifact (native/wasm), not just Coq-extracted proof terms | MUST | _(fill)_ | _(fill)_
+| HTTP *server* (or FFI to one) — for `POST /verify`, `POST /run` | MUST | _(fill)_ | _(fill)_
+| JSON encode/decode — for the v1 schemas | MUST | _(fill)_ | _(fill)_
+| Crypto: JWT/JWS verify (Ed25519), hashing — or a clean FFI path | MUST | _(fill)_ | _(fill)_
+| FFI to C/Rust/Zig — for anything missing | MUST | _(fill)_ | _(fill)_
+| async / concurrency — FIFO queue + request handling | SHOULD | _(fill)_ | _(fill)_
+| HTTP *client* / fetch — OAuth2, vörðr, transparency log | SHOULD | _(fill)_ | _(fill)_
+| file I/O — load policy from file | SHOULD | _(fill)_ | _(fill)_
+| test runner — so CI can run the Ephapax suite | SHOULD | _(fill)_ | _(fill)_
+|===
+
+Ephapax ships with *3 Admitted* (Coq) lemmas. Identify them and whether any sits
+under a capability svalinn's security guarantees rely on (linear single-use /
+revocation). svalinn inherits those holes until they are closed upstream — track
+them.
+
+=== Watch-for — D3 may be invalid
+
+[WARNING]
+====
+If a *MUST*-have is *ABSENT with no FFI path*, the migration cannot proceed and
+*Decision D3 itself is in question*. *STOP. Do not start the port.* Surface to
+the user with the capability matrix and the live alternatives:
+
+. stay on ReScript and prove it directly;
+. reconsider *AffineScript* (general application language, typed-wasm, OCaml
+  compiler) as the migration target instead;
+. wait on Ephapax and defer the migration.
+
+This is a high-information result — better learned from a cheap spike than
+mid-port. Do not improvise a different target language without the user's
+decision.
+====
+
+== Stage 1 — Migration map
+
+Write `docs/ephapax-migration/BLOCKER-LINEAGE.adoc` (AsciiDoc, SPDX
+`PMPL-1.0 OR MPL-2.0`). Follow the estate *Critical Chain* methodology
+(`.machine_readable/6a2/methodology.a2ml`): Phase-0 finds the critical chain;
+classify into rings; weight MUST(3×) / SHOULD(2×) / COULD(1×); convergent budget
+structural70 / corrective20 / perfective10. The representation format is *fully specified below* (ring-0 critical chain /
+ring-1 relevant-around / ring-2 orthogonal); the *target language is Ephapax*.
+A worked example of this exact format lives as the analogous
+`BLOCKER-LINEAGE.adoc` in the `affinescript` repo — consult it *only if that repo
+is already in your scope*; otherwise do not chase it, the structure here suffices.
+
+Required sections:
+
+* *State now* — ReScript, ~7,050 LOC, hazards (Appendix B), CI red (Appendix C).
+* *State needed* — Ephapax gateway meeting the MVP (Appendix A), zero
+  `Obj.magic`, JWT revocation true-by-construction.
+* *Critical chain (ring-0)*, dependency-ordered, rooted at the spike:
++
+[literal]
+Ephapax readiness → toolchain + CI green → core boundary decoders (kill
+Obj.magic) → auth (linear JWT/JTI + revocation ledger) → policy store →
+gateway endpoints (/verify, /run) → vörðr delegation → compose.
+* *Relevant-around (ring-1)* — test-suite port, JSON-Schema conformance of the
+  gateway types, docs/language-policy update, reconcile PR #32 (Appendix D).
+* *Orthogonal (ring-2)* — SPARK properties (Appendix E), `ui/` frontend port,
+  benchmarks, JWT-parser fuzz harness.
+
+== Stage 2 — The port
+
+Only if the spike is green. Port the ≈27 canonical `src/` modules + the `ui/`
+frontend (Appendix F), ReScript → Ephapax. Make the security wins *structural*,
+not patched:
+
+* Typed boundary decoders ⇒ the 20+ `Obj.magic` casts (Appendix B) become
+  *impossible*, not merely discouraged.
+* Ephapax *linear / exactly-once* tokens ⇒ JWT/JTI single-use + revocation
+  ledger (kills `hasRevocationList = false`), OAuth nonce/PKCE single-use,
+  session/container lifecycle (exactly-once start/stop), vörðr delegation.
+* Ensure the Ephapax test suite *runs in CI*. The ReScript tests never executed
+  under Deno (`@rescript/core` resolution); they vanish with the migration — do
+  not port the breakage.
+
+After migration, discharge the language-agnostic *specs* (Appendix E).
+
+== Constraints (carried from the estate)
+
+* Develop on the `claude/*` branch your environment assigns; clear commit
+  messages; push; open a *draft* PR. Never push to another branch.
+* Do *not* put any model identifier in commits, PR titles/bodies, or code.
+* Be frugal with GitHub comments — only when genuinely necessary.
+* If you touch any Idris/Coq: no `believe_me` / `assert_*` / `postulate` /
+  `unsafePerformIO`; keep totality.
+* Model: *Sonnet* for the migration. Escalate to *Opus* only if the spike turns
+  into genuine design work or D3 must be re-litigated.
+
+== Appendix A — MVP target
+
+Source: `MVP.adoc`.
+
+* `POST /verify` — validate a bundle against trust store + policy.
+* `POST /run` — schedule + start a container *after* verification.
+* JSON responses use `error-response.v1.json`.
+* Gatekeeper policy — implement schema `spec/schemas/gatekeeper-policy.v1.json`;
+  enforce required predicate types, allowed signer key IDs, log quorum = 1.
+* Single-node *FIFO* scheduling; status: `queued | starting | running | failed |
+  stopped`.
+* vörðr delegation — translate request to vörðr CLI/API; capture audit metadata.
+* NOTE: `MVP.adoc` references prototype tools `tools/mvp/svalinn_gateway.ts` (the
+  one *approved* TypeScript exemption) and `svalinn_gate.py` — MVP scaffolding,
+  not the production gateway being migrated. Leave the exemption until svalinn
+  reaches production tier (its documented unblock condition).
+* Deferred to 1.0: multi-log quorum, threshold sigs, multi-node, authn/authz,
+  rate limiting.
+
+== Appendix B — Hazards / port targets
+
+Source: `PROOF-NEEDS.md`. 20+ `Obj.magic` casts in security paths:
+
+* `src/auth/AuthMiddleware.res` — `Obj.magic(payload)`: unsafe JSON → typed JWT.
+* `src/auth/OAuth2.res` — multiple, OAuth response + JSON parsing.
+* `src/mcp/McpServer.res` — 10+, JSON param extraction + tool-result build; every
+  `Obj.magic(args)["field"]` is an unchecked access.
+* `src/compose/ComposeOrchestrator.res` — `Yaml.parse(content)->Obj.magic` (no
+  validation); `Obj.magic(options)` for fetch.
+* `src/policy/PolicyStore.res` — `Obj.magic` in policy code.
+
+Plus: JWT/JTI revocation hardcoded `hasRevocationList = false // TODO`. (NOTE:
+JWT *signature* verification was already wired on this branch — commit
+`6863383`, closing issue #12 — so the residual gap is the revocation ledger and
+the unchecked boundary casts, not signature checking.)
+
+== Appendix C — CI / state
+
+Source: `.machine_readable/6a2/STATE.a2ml`. 35% complete; phase `crg-c-testing`;
+maturity experimental.
+
+* `main` CI is *red* on *pre-existing* ReScript breakage (Type Check / Lint /
+  Format / Spec / Schema / Doctor). 53 ReScript unit/security tests do *not*
+  execute under Deno (`@rescript/core` resolution). *Do not fix in ReScript* —
+  it is being replaced.
+* `deno.json` pins `rescript@12` + `@rescript/core@1.6.1` (+ runtime).
+* Critical-next-actions on record: JWT JTI deny-list + revocation contract test,
+  MCP protocol tests, vörðr integration tests, OAuth2 mock server, concurrent
+  request tests, JWT-parser fuzz harness.
+
+== Appendix D — PRs / issues to reconcile
+
+* *PR #32 (draft)* — "reconcile language policy ReScript → AffineScript".
+  *Contradicts D3* (target is Ephapax). Redirect to Ephapax or close, and update
+  the language-policy table in `.claude/CLAUDE.md` as part of the migration.
+  Maintainer decision — flag, do not unilaterally merge/close.
+* *PR #33* — dependabot; red on the pre-existing ReScript breakage.
+* *Issue #13 (security)* — 19 Critical/High findings (`decodeJwt()` without
+  `jwtVerify()`, `JSON.parseExn`). *Discharged structurally* by this migration
+  (verified JWT + typed deserialisation), not by patching ReScript. Reference it
+  in the PR that lands the auth port.
+
+== Appendix E — Specs to discharge after migration
+
+Language-agnostic: policy determinism; `allow ∩ deny` composition + monotonicity;
+JWT single-use & revocation; no unchecked boundary casts; JSON-Schema conformance
+of all 9 gateway types. Planned SPARK properties
+(`docs/cerro-torre-integration.adoc` §6.2): attestation sig, key lookup,
+threshold sig, log inclusion, policy eval.
+
+== Appendix F — Module inventory
+
+≈27 canonical `src/` modules + 4 `ui/`:
+
+* auth ×4 (incl. `AuthMiddleware`, `OAuth2`), gateway ×3, policy ×3 (incl.
+  `PolicyStore`), validation ×2, mcp ×3 (incl. `McpServer`), compose ×2 (incl.
+  `ComposeOrchestrator`), vordr ×2, bindings ×2, integrations ×2, tests ×4,
+  `Main`; plus `ui/src` ×4 (ReScript frontend).
+* *Ignore* `src/lib/bs/**` and `src/lib/ocaml/**` — generated build output.
+* Existing `src/abi/*.idr` are template-level Idris ABI proofs.

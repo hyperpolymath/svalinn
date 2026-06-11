@@ -1,27 +1,41 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# META.a2ml — Svalinn meta-level information
+# META.a2ml — Architecture decisions & development practices
 [metadata]
-version = "0.1.0"
-last-updated = "2026-04-11"
-
-[project-info]
+project = "svalinn"
+author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 license = "MPL-2.0"
-author = "Jonathan D.A. Jewell (hyperpolymath)"
+standard = "RSR 2026"
+last-updated = "2026-06-05"
 
-[architecture-decisions]
-decisions = [
-  # No ADRs recorded
+[architecture]
+summary = """Edge verification gateway in the hyperpolymath estate. Validates container bundles against a trust store + gatekeeper policy (POST /verify), schedules and starts containers after verification via a single-node FIFO queue (POST /run), and delegates execution to vörðr. Currently ~7,050 LOC ReScript; migrating to Ephapax (D3) to discharge security debt structurally."""
+mvp-endpoints = "POST /verify, POST /run"
+scheduling = "single-node FIFO; status: queued | starting | running | failed | stopped"
+delegation = "vörðr CLI/API; captures execution metadata for audit logs"
+policy = "gatekeeper-policy.v1.json schema; required predicate types + allowed signer key IDs + log quorum=1"
+current-language = "ReScript (Deno runtime)"
+migration-target = "Ephapax (migrate-then-prove, Decision D3)"
+
+[decisions]
+records = [
+  "D3 — svalinn migrates ReScript → Ephapax before proofs (migrate-then-prove). Ephapax replaces all the ReScript. AffineScript is NOT the target — it surfaced only as a format exemplar. The migration discharges security debt structurally (typed boundary decoders + linear exactly-once tokens), not by patching ReScript. Authority: docs/ephapax-migration/HANDOFF.adoc.",
+  "TypeScript exemption — tools/mvp/svalinn_gateway.ts is the one approved TypeScript file (MVP scaffolding, not production). Exemption stands until svalinn reaches production tier; rewrite in AffineScript at that point.",
+  "Issue #12 closed — JWT signature verification wired (commit 6863383); residual gap is JTI revocation ledger, discharged structurally by Ephapax linear tokens.",
+  "Issue #13 — 19 Critical/High security findings (decodeJwt() without jwtVerify(), JSON.parseExn) discharged structurally by the migration, not by patching ReScript.",
+  "PR #32 (draft, 'reconcile language policy ReScript → AffineScript') contradicts D3 — target is Ephapax. Flag to maintainer; do not merge/close unilaterally.",
 ]
 
-[development-practices]
+[practices]
 versioning = "SemVer"
-documentation = "AsciiDoc"
+documentation = "AsciiDoc (.adoc) except GitHub-required files"
 build-tool = "just"
+error-taxonomy = "q/ query · p/ proof · z/ zone"
+ci = "Deno test suite; RSR antipattern check; SPDX headers; CI currently red on pre-existing ReScript breakage (Type Check / Lint / Format / Spec / Schema / Doctor) — not to be fixed in ReScript"
+scoping-first = true
 
 [maintenance-axes]
-scoping-first = true
 axis-1 = "must > intend > like"
 axis-2 = "corrective > adaptive > perfective"
 axis-3 = "systems > compliance > effects"

@@ -2,25 +2,42 @@
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # PLAYBOOK.a2ml — Operational playbook
+# Runbooks, build/verify procedures, incident response.
 [metadata]
 version = "0.1.0"
-last-updated = "2026-04-11"
+last-updated = "2026-06-05"
+
+[build-and-verify]
+typecheck = "just check   # or: deno check src/**/*.ts (MVP gateway only)"
+test = "just test   # NOTE: 53 ReScript unit/security tests do not run under Deno (@rescript/core resolution); this is pre-existing, vanishes with migration"
+validate = "just validate-rsr   # RSR antipattern + SPDX checks"
+security = "just security   # vulnerability audit"
+release-gate = "just maint-hard-pass"
 
 [deployment]
-# method = "gitops"  # gitops | manual | ci-triggered
-# target = "container"  # container | binary | library | wasm
+method = "gitops"
+target = "container"
+runtime = "Deno"
 
 [incident-response]
-# 1. Check .machine_readable/STATE.a2ml for current status
-# 2. Review recent commits and CI results
-# 3. Run `just validate` to check compliance
-# 4. Run `just security` to audit for vulnerabilities
+steps = [
+  "Check .machine_readable/6a2/STATE.a2ml for current status, blockers, and next actions",
+  "Review recent commits and CI results (NOTE: main is red on pre-existing ReScript breakage — see STATE.a2ml ci-reality section; do not treat as regressions)",
+  "For security issues: consult PROOF-NEEDS.md and docs/ephapax-migration/HANDOFF.adoc Appendix B; disposition is structural discharge via migration",
+  "For migration issues: consult docs/ephapax-migration/HANDOFF.adoc; ensure ephapax repo is in scope before resuming Stage 0",
+]
 
 [release-process]
-# 1. Update version in STATE.a2ml, META.a2ml
-# 2. Run `just release-preflight` (validate + quality + security + maint-hard-pass)
-# 3. Tag and push
+steps = [
+  "Update version + last-updated in STATE.a2ml and META.a2ml",
+  "Ensure CI is green (NOTE: CI will be red until migration lands — gate release on post-migration green)",
+  "Run just release-preflight (validate + quality + security + maint-hard-pass)",
+  "Tag and push",
+]
 
-[maintenance-operations]
-# Baseline audit: just maint-audit
-# Hard release gate: just maint-hard-pass
+[migration-runbook]
+# For the Ephapax migration session — see HANDOFF.adoc for full charter
+stage-0 = "Readiness spike — both svalinn + ephapax repos must be in scope; fill capability matrix; if any MUST is ABSENT with no FFI path, STOP and surface to maintainer"
+stage-1 = "Write docs/ephapax-migration/BLOCKER-LINEAGE.adoc (Critical Chain methodology, ring-0 → ring-2)"
+stage-2 = "Port ≈27 src/ modules + 4 ui/ modules; make Obj.magic impossible by type; revocation true-by-construction via linear tokens; Ephapax test suite must run in CI"
+post-migration = "Discharge language-agnostic specs (Appendix E of HANDOFF.adoc); SPARK properties in cerro-torre-integration.adoc §6.2"
