@@ -36,7 +36,7 @@ Deno.test("P2P: JWT decode never panics on valid 3-part tokens (100 iterations)"
     // Property: decode of a valid token never throws
     let decoded: unknown;
     try {
-      decoded = Jwt.decodeJwt(token);
+      decoded = Jwt.parseJwtSegments(token);
     } catch {
       decoded = null;
     }
@@ -50,7 +50,7 @@ Deno.test("P2P: JWT decode returns object with header and payload for valid toke
     const algs = ["RS256", "ES256", "HS256"];
     const alg = algs[i % algs.length];
     const token = makeJwtToken(alg, `user-${i}`, 9999999999);
-    const decoded = Jwt.decodeJwt(token) as { header: { alg: string }; payload: { sub: string } };
+    const decoded = Jwt.parseJwtSegments(token) as { header: { alg: string }; payload: { sub: string } };
     // Property: decoded token has the same alg as what was encoded
     assertEquals(decoded.header.alg, alg);
     assertEquals(decoded.payload.sub, `user-${i}`);
@@ -62,7 +62,7 @@ Deno.test("P2P: JWT decode always throws on tokens with fewer than 3 parts", () 
   for (const t of malformed) {
     let threw = false;
     try {
-      Jwt.decodeJwt(t);
+      Jwt.parseJwtSegments(t);
     } catch {
       threw = true;
     }

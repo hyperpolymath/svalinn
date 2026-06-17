@@ -43,7 +43,7 @@ function base64UrlDecode(str) {
   return bytes;
 }
 
-function decodeJwt(token) {
+function parseJwtSegments(token) {
   let parts = token.split(".");
   if (parts.length !== 3) {
     Pervasives.failwith("Invalid JWT format");
@@ -51,7 +51,10 @@ function decodeJwt(token) {
   let headerB64 = parts[0];
   let payloadB64 = parts[1];
   let signatureB64 = parts[2];
-  let decodePart = p => JSON.parse(atob(p.replace(/-/g, "+").replace(/_/g, "/")));
+  let decodePart = p => {
+    atob(p.replace(/-/g, "+").replace(/_/g, "/"));
+    return (JSON.parse(jsonStr));
+  };
   return {
     headerB64: headerB64,
     payloadB64: payloadB64,
@@ -157,7 +160,7 @@ function algToWebCrypto(alg) {
 }
 
 async function verifyJwt(token, config) {
-  let decoded = decodeJwt(token);
+  let decoded = parseJwtSegments(token);
   let alg = decoded.header.alg;
   let kid = decoded.header.kid;
   let pair = algToWebCrypto(alg);
@@ -195,7 +198,7 @@ export {
   jwksCacheTtl,
   fetchJwks,
   base64UrlDecode,
-  decodeJwt,
+  parseJwtSegments,
   algToWebCrypto,
   verifyJwt,
 }

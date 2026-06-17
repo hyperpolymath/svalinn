@@ -54,33 +54,33 @@ async function assertRejectsAny(fn) {
   Assert1.assertEquals(caught, true);
 }
 
-Deno.test("decodeJwt: rejects token with only one part", () => {
+Deno.test("parseJwtSegments: rejects token with only one part", () => {
   Assert1.assertThrows(() => {
-    Jwt.decodeJwt("onlyonepart");
+    Jwt.parseJwtSegments("onlyonepart");
   });
 });
 
-Deno.test("decodeJwt: rejects token with two parts (missing signature)", () => {
+Deno.test("parseJwtSegments: rejects token with two parts (missing signature)", () => {
   Assert1.assertThrows(() => {
-    Jwt.decodeJwt("header.payload");
+    Jwt.parseJwtSegments("header.payload");
   });
 });
 
-Deno.test("decodeJwt: rejects token with four parts (extra segment)", () => {
+Deno.test("parseJwtSegments: rejects token with four parts (extra segment)", () => {
   Assert1.assertThrows(() => {
-    Jwt.decodeJwt("a.b.c.d");
+    Jwt.parseJwtSegments("a.b.c.d");
   });
 });
 
-Deno.test("decodeJwt: rejects empty string token", () => {
+Deno.test("parseJwtSegments: rejects empty string token", () => {
   Assert1.assertThrows(() => {
-    Jwt.decodeJwt("");
+    Jwt.parseJwtSegments("");
   });
 });
 
-Deno.test("decodeJwt: rejects token with empty header segment", () => {
+Deno.test("parseJwtSegments: rejects token with empty header segment", () => {
   Assert1.assertThrows(() => {
-    Jwt.decodeJwt(".payload.sig");
+    Jwt.parseJwtSegments(".payload.sig");
   });
 });
 
@@ -105,11 +105,11 @@ Deno.test("verifyJwt: rejects token with empty issuer", async () => {
   });
 });
 
-Deno.test("decodeJwt: alg:none token is parsed structurally (header readable)", () => {
+Deno.test("parseJwtSegments: alg:none token is parsed structurally (header readable)", () => {
   let noneHeader = btoa(`{"alg":"none","typ":"JWT"}`);
   let payload = btoa(`{"sub":"attacker","iss":"https://auth.example.com","aud":"svalinn","exp":9999999999,"iat":0}`);
   let noneToken = noneHeader + `.` + payload + `.`;
-  let decoded = Jwt.decodeJwt(noneToken);
+  let decoded = Jwt.parseJwtSegments(noneToken);
   let header = decoded.header;
   Assert1.assertEquals(header.alg, "none");
 });
@@ -136,20 +136,20 @@ Deno.test("verifyJwt: rejects HS256 token when RS256 expected (algorithm swap)",
   });
 });
 
-Deno.test("decodeJwt: token with missing sub claim is parseable (claim check is verifyJwt)", () => {
+Deno.test("parseJwtSegments: token with missing sub claim is parseable (claim check is verifyJwt)", () => {
   let noSubHeader = btoa(`{"alg":"RS256","typ":"JWT"}`);
   let noSubPayload = btoa(`{"iss":"https://auth.example.com","aud":"svalinn","exp":9999999999,"iat":0}`);
   let noSubToken = noSubHeader + `.` + noSubPayload + `.sig`;
-  let decoded = Jwt.decodeJwt(noSubToken);
+  let decoded = Jwt.parseJwtSegments(noSubToken);
   let payload = decoded.payload;
   Assert1.assertEquals(payload.sub, undefined);
 });
 
-Deno.test("decodeJwt: token with missing exp claim is parseable", () => {
+Deno.test("parseJwtSegments: token with missing exp claim is parseable", () => {
   let noExpHeader = btoa(`{"alg":"RS256","typ":"JWT"}`);
   let noExpPayload = btoa(`{"sub":"user","iss":"https://auth.example.com","aud":"svalinn","iat":0}`);
   let noExpToken = noExpHeader + `.` + noExpPayload + `.sig`;
-  let decoded = Jwt.decodeJwt(noExpToken);
+  let decoded = Jwt.parseJwtSegments(noExpToken);
   let payload = decoded.payload;
   Assert1.assertEquals(payload.exp, undefined);
 });
@@ -158,23 +158,23 @@ Deno.test("token replay: revocation contract documented (placeholder for JTI den
   Assert1.assertEquals(false, false);
 });
 
-Deno.test("decodeJwt: rejects SQL-like injection in token string", () => {
+Deno.test("parseJwtSegments: rejects SQL-like injection in token string", () => {
   Assert1.assertThrows(() => {
-    Jwt.decodeJwt("' OR '1'='1");
+    Jwt.parseJwtSegments("' OR '1'='1");
   });
 });
 
-Deno.test("decodeJwt: rejects null-byte injection token", () => {
+Deno.test("parseJwtSegments: rejects null-byte injection token", () => {
   Assert1.assertThrows(() => {
-    Jwt.decodeJwt("head\x00er.payload.sig");
+    Jwt.parseJwtSegments("head\x00er.payload.sig");
   });
 });
 
-Deno.test("decodeJwt: rejects very large token (DoS guard)", () => {
+Deno.test("parseJwtSegments: rejects very large token (DoS guard)", () => {
   let bigSeg = "A".repeat(8192);
   let bigToken = bigSeg + `.` + bigSeg + `.` + bigSeg;
   try {
-    Jwt.decodeJwt(bigToken);
+    Jwt.parseJwtSegments(bigToken);
     Assert1.assertEquals(true, true);
     return;
   } catch (exn) {

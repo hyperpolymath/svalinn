@@ -21,12 +21,12 @@ const STRICT_POLICY = {
 };
 
 Deno.bench("JWT decode valid token", () => {
-  Jwt.decodeJwt(VALID_TOKEN);
+  Jwt.parseJwtSegments(VALID_TOKEN);
 });
 
 Deno.bench("JWT decode invalid (3 parts, bad base64)", () => {
   try {
-    Jwt.decodeJwt("aaa.bbb.ccc");
+    Jwt.parseJwtSegments("aaa.bbb.ccc");
   } catch {
     // expected
   }
@@ -61,6 +61,6 @@ Deno.bench("PolicyEvaluator: open policy always-allow", () => {
 
 Deno.bench("JWT decode x10 batch", () => {
   for (let i = 0; i < 10; i++) {
-    Jwt.decodeJwt(VALID_TOKEN);
+    Jwt.parseJwtSegments(VALID_TOKEN);
   }
 });

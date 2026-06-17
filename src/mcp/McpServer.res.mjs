@@ -3,8 +3,8 @@
 import * as Tools from "./Tools.res.mjs";
 import * as Client from "../vordr/Client.res.mjs";
 import * as Validation from "../validation/Validation.res.mjs";
+import * as Core__Option from "@rescript/core/src/Core__Option.res.mjs";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
 let serverName = "svalinn";
@@ -52,61 +52,6 @@ function makeError(text) {
   };
 }
 
-function handlePolicy(args) {
-  let action = args.action;
-  switch (action) {
-    case "get" :
-      return makeSuccess(JSON.stringify(Validation.defaultPolicy));
-    case "validate" :
-      return {
-        content: [{
-            type_: "text",
-            text: "Policy valid"
-          }],
-        isError: undefined
-      };
-    default:
-      return makeError(`Unknown policy action: ` + action);
-  }
-}
-
-async function handleVerify(args) {
-  let image = args.image;
-  try {
-    let result = await Client.verifyImage(Client.client, image, "");
-    if (result.verified) {
-      return makeSuccess(`Image verified: ` + image);
-    } else {
-      return makeError(`Image verification failed: ` + image);
-    }
-  } catch (raw_e) {
-    let e = Primitive_exceptions.internalToException(raw_e);
-    if (e.RE_EXN_ID === "JsExn") {
-      return makeError(Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "Unknown error"));
-    }
-    throw e;
-  }
-}
-
-async function handleStop(args) {
-  let containerId = args.containerId;
-  try {
-    await Client.stopContainer(Client.client, containerId);
-    return makeSuccess(`Container stopped: ` + containerId);
-  } catch (raw_e) {
-    let e = Primitive_exceptions.internalToException(raw_e);
-    if (e.RE_EXN_ID === "JsExn") {
-      return makeError(Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "Unknown error"));
-    }
-    throw e;
-  }
-}
-
-async function handlePs(_args) {
-  let containers = await Client.listContainers(Client.client);
-  return makeSuccess(containers.length === 0 ? "No containers running" : containers.map(c => c.id + `\t` + c.name + `\t` + c.image).join("\n"));
-}
-
 async function handleRun(args) {
   let image = args.image;
   let name = args.name;
@@ -146,7 +91,21 @@ async function handleRun(args) {
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      return makeError(Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "Unknown error"));
+      return makeError(Core__Option.getOr(Stdlib_JsExn.message(e._1), "Unknown error"));
+    }
+    throw e;
+  }
+}
+
+async function handleStop(args) {
+  let containerId = args.containerId;
+  try {
+    await Client.stopContainer(Client.client, containerId);
+    return makeSuccess(`Container stopped: ` + containerId);
+  } catch (raw_e) {
+    let e = Primitive_exceptions.internalToException(raw_e);
+    if (e.RE_EXN_ID === "JsExn") {
+      return makeError(Core__Option.getOr(Stdlib_JsExn.message(e._1), "Unknown error"));
     }
     throw e;
   }
@@ -160,7 +119,25 @@ async function handleRm(args) {
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      return makeError(Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "Unknown error"));
+      return makeError(Core__Option.getOr(Stdlib_JsExn.message(e._1), "Unknown error"));
+    }
+    throw e;
+  }
+}
+
+async function handleVerify(args) {
+  let image = args.image;
+  try {
+    let result = await Client.verifyImage(Client.client, image, "");
+    if (result.verified) {
+      return makeSuccess(`Image verified: ` + image);
+    } else {
+      return makeError(`Image verification failed: ` + image);
+    }
+  } catch (raw_e) {
+    let e = Primitive_exceptions.internalToException(raw_e);
+    if (e.RE_EXN_ID === "JsExn") {
+      return makeError(Core__Option.getOr(Stdlib_JsExn.message(e._1), "Unknown error"));
     }
     throw e;
   }
@@ -176,6 +153,11 @@ async function handleLogs(args) {
   };
 }
 
+async function handlePs(_args) {
+  let containers = await Client.listContainers(Client.client);
+  return makeSuccess(containers.length === 0 ? "No containers running" : containers.map(c => c.id + `\t` + c.name + `\t` + c.image).join("\n"));
+}
+
 async function handleExec(args) {
   return {
     content: [{
@@ -184,6 +166,24 @@ async function handleExec(args) {
       }],
     isError: undefined
   };
+}
+
+function handlePolicy(args) {
+  let action = args.action;
+  switch (action) {
+    case "get" :
+      return makeSuccess(JSON.stringify(Validation.defaultPolicy));
+    case "validate" :
+      return {
+        content: [{
+            type_: "text",
+            text: "Policy valid"
+          }],
+        isError: undefined
+      };
+    default:
+      return makeError(`Unknown policy action: ` + action);
+  }
 }
 
 async function handleCallTool(params) {

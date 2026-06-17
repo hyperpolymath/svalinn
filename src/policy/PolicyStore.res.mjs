@@ -17,8 +17,8 @@ async function loadPolicy(self, name) {
   }
   try {
     let path = self.policyDir + `/` + name + `.json`;
-    let content = await Deno.readTextFile(path);
-    let policy = JSON.parse(content);
+    await Deno.readTextFile(path);
+    let policy = (JSON.parse(content));
     self.cache.set(name, policy);
     return policy;
   } catch (exn) {

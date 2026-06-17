@@ -17,7 +17,7 @@ Deno.test("Reflexive: JWT encode then decode round-trip preserves sub claim", ()
     const headerObj = { alg: "RS256", typ: "JWT" };
     const payloadObj = { sub, iss: "https://test.example.com", aud: "svalinn", exp: 9999999999, iat: 0 };
     const token = btoa(JSON.stringify(headerObj)) + "." + btoa(JSON.stringify(payloadObj)) + ".sig";
-    const decoded = Jwt.decodeJwt(token) as { payload: { sub: string } };
+    const decoded = Jwt.parseJwtSegments(token) as { payload: { sub: string } };
     assertEquals(decoded.payload.sub, sub);
   }
 });
@@ -26,7 +26,7 @@ Deno.test("Reflexive: JWT decode and re-encode header alg is stable", () => {
   const algs = ["RS256", "ES256", "RS512"];
   for (const alg of algs) {
     const token = btoa(JSON.stringify({ alg, typ: "JWT" })) + "." + btoa(JSON.stringify({ sub: "x" })) + ".sig";
-    const decoded = Jwt.decodeJwt(token) as { header: { alg: string } };
+    const decoded = Jwt.parseJwtSegments(token) as { header: { alg: string } };
     assertEquals(decoded.header.alg, alg);
   }
 });
@@ -65,9 +65,9 @@ Deno.test("Contract: PolicyEvaluator.evaluate always returns an object with allo
   }
 });
 
-Deno.test("Contract: JWT decodeJwt returns object with header and payload for valid tokens", () => {
+Deno.test("Contract: JWT parseJwtSegments returns object with header and payload for valid tokens", () => {
   const token = btoa('{"alg":"RS256","typ":"JWT"}') + "." + btoa('{"sub":"u","iss":"i","aud":"a","exp":9999999999,"iat":0}') + ".sig";
-  const decoded = Jwt.decodeJwt(token);
+  const decoded = Jwt.parseJwtSegments(token);
   assertExists(decoded);
   assertExists((decoded as { header: unknown }).header);
   assertExists((decoded as { payload: unknown }).payload);
@@ -115,7 +115,7 @@ Deno.test("E2E: decode a JWT built manually, check claims, evaluate policy", () 
   const token = `${header}.${payload}.fake-sig`;
 
   // Step 1: decode JWT
-  const decoded = Jwt.decodeJwt(token) as { payload: { sub: string; roles: string[] } };
+  const decoded = Jwt.parseJwtSegments(token) as { payload: { sub: string; roles: string[] } };
   assertEquals(decoded.payload.sub, "service-account-001");
 
   // Step 2: based on role, choose a policy
@@ -137,7 +137,7 @@ Deno.test("E2E: decode a JWT built manually, check claims, evaluate policy", () 
 
 Deno.test("E2E: smoke — parse a minimal JWT token with one field", () => {
   const token = btoa('{"alg":"RS256"}') + "." + btoa('{"sub":"test"}') + ".sig";
-  const decoded = Jwt.decodeJwt(token) as { header: { alg: string }; payload: { sub: string } };
+  const decoded = Jwt.parseJwtSegments(token) as { header: { alg: string }; payload: { sub: string } };
   assertEquals(decoded.header.alg, "RS256");
   assertEquals(decoded.payload.sub, "test");
 });
