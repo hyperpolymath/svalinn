@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 = Doctor + Onboarding Implementation Plan
 :toc: preamble
@@ -423,7 +423,7 @@ m3n4o5p6...  vordr-linux-aarch64-musl
 [source,bash]
 ----
 #!/usr/bin/env bash
-# SPDX-License-Identifier: MIT OR MPL-2.0
+# SPDX-License-Identifier: CC-BY-SA-4.0 OR MPL-2.0
 # Vordr Quick Install Script
 # Usage: curl -fsSL https://get.vordr.dev | bash
 
@@ -947,7 +947,7 @@ XDG-compliant configuration with clear state management and config commands.
 [source,toml]
 ----
 # /etc/vordr/config.toml or ~/.config/vordr/config.toml
-# SPDX-License-Identifier: MIT OR MPL-2.0
+# SPDX-License-Identifier: CC-BY-SA-4.0 OR MPL-2.0
 
 [engine]
 # Container runtime binary (youki or runc)
