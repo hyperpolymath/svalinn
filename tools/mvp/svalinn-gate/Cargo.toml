@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+[package]
+name = "svalinn-gate"
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+description = "Svalinn MVP policy gate — verify a DSSE/in-toto attestation bundle against a policy and trust store"
+publish = false
+
+[[bin]]
+name = "svalinn-gate"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+base64 = "0.22"

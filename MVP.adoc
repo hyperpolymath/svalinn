@@ -30,7 +30,7 @@ and single-node scheduling.
   - allowed signer key IDs
   - log quorum (set to `1` for MVP)
 * [ ] MVP policy example at `spec/policy/mvp-policy.json`
-* [ ] MVP verifier helper in `tools/mvp/svalinn_gate.py`
+* [ ] MVP verifier helper in `tools/mvp/svalinn-gate/` (Rust)
 
 === 3. Single-Node Scheduling
 

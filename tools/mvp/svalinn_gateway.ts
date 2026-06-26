@@ -354,9 +354,10 @@ async function runGate(request: GateRequest) {
     throw new Error("bundlePath, trustStorePath, and policyPath are required");
   }
 
-  const cmd = new Deno.Command("python3", {
+  // svalinn-gate is the Rust port of the former svalinn_gate.py — build once with
+  // `cargo build --release --manifest-path tools/mvp/svalinn-gate/Cargo.toml`.
+  const cmd = new Deno.Command("tools/mvp/svalinn-gate/target/release/svalinn-gate", {
     args: [
-      "tools/mvp/svalinn_gate.py",
       "verify",
       "--bundle",
       bundlePath,
