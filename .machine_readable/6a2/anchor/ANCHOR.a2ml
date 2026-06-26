@@ -3,7 +3,7 @@
 
 id: "org.hyperpolymath.svalinn"
 version: "1.0.0"
-clade: "unknown"
+clade: "sc"
 status: "active"
 
 # SSG Configuration (Unified boj-server build)
