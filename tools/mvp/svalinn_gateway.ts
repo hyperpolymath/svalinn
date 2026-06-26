@@ -595,9 +595,13 @@ async function initPreflight() {
 await loadState();
 await initPreflight();
 
-Deno.serve(async (req) => {
+const listenPort = Number(Deno.env.get("SVALINN_PORT") ?? "8000");
+const listenHost = Deno.env.get("SVALINN_HOST") ?? "0.0.0.0";
+logEvent("info", "listening", { hostname: listenHost, port: listenPort });
+
+Deno.serve({ port: listenPort, hostname: listenHost }, async (req) => {
   const url = new URL(req.url);
-  if (req.method === "GET" && url.pathname === "/healthz") {
+  if (req.method === "GET" && (url.pathname === "/healthz" || url.pathname === "/health")) {
     const strict = url.searchParams.get("strict") === "1";
     if (strict) {
       const checks = await strictHealth();
