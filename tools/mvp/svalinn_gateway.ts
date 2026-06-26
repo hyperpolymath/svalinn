@@ -219,7 +219,7 @@ async function runVordrJson(args: string[]): Promise<unknown> {
   return JSON.parse(stdout);
 }
 
-function deriveContainerField(obj: Record<string, unknown>, keys: array<string>): string {
+function deriveContainerField(obj: Record<string, unknown>, keys: Array<string>): string {
   for (const key of keys) {
     const value = obj[key];
     if (typeof value === "string" && value.length > 0) {
@@ -271,7 +271,7 @@ async function loadContainersFallback(): Promise<Array<Record<string, string>>> 
   }
 }
 
-function deriveImageField(obj: Record<string, unknown>, keys: array<string>): string {
+function deriveImageField(obj: Record<string, unknown>, keys: Array<string>): string {
   for (const key of keys) {
     const value = obj[key];
     if (typeof value === "string" && value.length > 0) {
