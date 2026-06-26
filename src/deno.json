@@ -9,7 +9,7 @@
     "build:compose": "deno compile --allow-net --allow-read --allow-env -o dist/svalinn-compose compose/cli.ts",
     "compose": "deno run --allow-net --allow-read --allow-env compose/cli.ts",
     "test": "deno test --allow-net --allow-read --allow-env",
-    "check": "deno check main.ts compose/cli.ts",
+    "check": "deno check ../tools/mvp/svalinn_gateway.ts",
     "fmt": "deno fmt",
     "lint": "deno lint"
   },
