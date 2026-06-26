@@ -120,7 +120,9 @@ The gateway logs JSON lines to stdout with request and job metadata.
 
 Runs append to `tools/mvp/audit.log` by default. Override with
 `SVALINN_AUDIT_PATH`.
-python3 tools/mvp/svalinn_gate.py verify \
+# Build the gate once (target/ is gitignored):
+#   cargo build --release --manifest-path tools/mvp/svalinn-gate/Cargo.toml
+tools/mvp/svalinn-gate/target/release/svalinn-gate verify \
   --bundle tools/mvp/bundle.json \
   --trust-store tools/mvp/trust-store.json \
   --policy spec/policy/mvp-policy.json \
