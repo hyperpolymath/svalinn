@@ -69,8 +69,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-deno-
       - name: Run type checking
-        run: deno check main.ts compose/cli.ts
-        working-directory: src
+        # src/main.ts and compose/cli.ts were never created; since the
+        # .res→.affine migration, src/ holds AffineScript, not a Deno TS app.
+        # Type-check the real TS entrypoint: the MVP gateway.
+        run: deno check tools/mvp/svalinn_gateway.ts
   test:
     name: Test
     runs-on: ubuntu-latest
