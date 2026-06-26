@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0 OR MPL-2.0
+// Owner: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= SonarQube Cloud — Muting the Pull-Request Summary Comment
+:toc: macro
+:sectnums:
+:sectnumlevels: 3
+
+Canonical, self-contained runbook for the recurring `sonarqubecloud[bot]`
+"Quality Gate passed / failed" *summary comment* that SonarQube Cloud (formerly
+SonarCloud) posts on every pull request — for example
+https://github.com/hyperpolymath/svalinn/pull/52#issuecomment-4813980444[svalinn#52].
+This is *Decision D4* (see `.machine_readable/6a2/STATE.a2ml`).
+
+toc::[]
+
+== Decision (D4)
+
+[%hardbreaks]
+*Keep* SonarQube Cloud quality-gate *analysis*.
+*Permanently disable* its GitHub pull-request *summary comment*.
+
+Rationale: the analysis itself (quality gate, security hotspots, coverage,
+duplication) carries signal; the per-PR summary comment is pure noise that merely
+restates a status we already read in the *Checks* tab. Muting the comment loses
+no information.
+
+== Where the comment comes from (the "source")
+
+The comment is *not* triggered by anything in this repository. There is no
+`sonar-project.properties`, no `.sonarcloud.properties`, and no Sonar workflow in
+the tree — a repo-wide grep returns *zero* Sonar references. It is produced
+entirely *server-side* by the *SonarQube Cloud GitHub App*, via two coupled
+features:
+
+* *Automatic Analysis* — Sonar scans the repository with no CI step of ours; and
+* *Pull-request decoration* — Sonar posts the quality-gate *summary comment* back
+  onto the PR's Conversation tab.
+
+Two consequences follow, and they are the whole reason this is a runbook rather
+than a committed config change:
+
+. *Deleting files in this repo cannot stop the comment* — nothing here emits it.
+. *There is no repository-side property to mute it.* The
+  `sonar.pullrequest.github.summary_comment` key exists only for self-hosted
+  *SonarQube Server*; SonarQube *Cloud* exposes the control solely in its project
+  administration UI. This document is therefore the durable, version-controlled
+  record of an action that itself lives off-repo.
+
+== The fix (admin action — ~30 seconds, once)
+
+Requires SonarQube Cloud *Administer* permission on the project
+`hyperpolymath_svalinn` (the `id=` seen in the bot comment's links).
+
+. Sign in at https://sonarcloud.io and open the project *hyperpolymath_svalinn*.
+. Go to *Administration -> General Settings*.
+. Open the *Pull Requests* category.
+. Turn *off* *"Enable analysis summary under the GitHub Conversation tab"*
+  (older UI label: *"Enable summary comment"*).
+. *Save.* No re-analysis is required; the next PR event simply posts no summary
+  comment.
+
+*Scope.* This setting is *project-scoped* (svalinn only). To silence the comment
+across the estate, repeat per project, or apply it at the SonarQube Cloud
+*organization* General Settings if your plan surfaces it there.
+
+*Not affected.* Inline issue comments are a separate feature; this change mutes
+only the quality-gate *summary* block.
+
+== Cleaning up the existing comment (optional)
+
+Muting stops only *future* comments. The historical comment on svalinn#52 may be
+left in place or deleted from the PR's Conversation tab — purely cosmetic.
+
+== Verification
+
+* Open the next pull request (or re-run analysis): no `sonarqubecloud[bot]`
+  summary comment should appear, while the quality gate still reports under
+  *Checks*.
+* The setting lives server-side and *can be toggled back on by any project
+  admin*. Treat re-appearance of the summary comment as a signal that the setting
+  was re-enabled — re-apply this runbook.
+* *Agents MUST NOT re-enable it* (recorded in
+  `.machine_readable/6a2/AGENTIC.a2ml`).
+
+== References
+
+* SonarQube Cloud docs — Pull request analysis (summary comment toggle):
+  https://docs.sonarsource.com/sonarqube-cloud/improving/pull-request-analysis/
+* SonarQube Cloud docs — Automatic Analysis (UI-only enable/disable):
+  https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis/

@@ -5,7 +5,7 @@
 # Runbooks, build/verify procedures, incident response.
 [metadata]
 version = "0.1.0"
-last-updated = "2026-06-05"
+last-updated = "2026-06-26"
 
 [build-and-verify]
 typecheck = "just check   # or: deno check src/**/*.ts (MVP gateway only)"
@@ -26,6 +26,10 @@ steps = [
   "For security issues: consult PROOF-NEEDS.md and docs/ephapax-migration/HANDOFF.adoc Appendix B; disposition is structural discharge via migration",
   "For migration issues: consult docs/ephapax-migration/HANDOFF.adoc; ensure ephapax repo is in scope before resuming Stage 0",
 ]
+
+[ci-bot-noise]
+# Recurring third-party bot comments on PRs and how to silence them at source.
+sonarcloud-pr-summary-comment = "sonarqubecloud[bot] posts a quality-gate summary comment on every PR. It is server-side: SonarQube Cloud GitHub App automatic analysis + PR decoration. No repo file triggers it and none can mute it (the sonar.pullrequest.github.summary_comment key is SonarQube Server-only, not Cloud). Decision D4: keep analysis, mute the comment — SonarQube Cloud → project hyperpolymath_svalinn → Administration → General Settings → Pull Requests → turn off 'Enable analysis summary under the GitHub Conversation tab'. Full runbook + verification: docs/ci/sonarcloud-pr-comments.adoc. Do NOT re-enable."
 
 [release-process]
 steps = [

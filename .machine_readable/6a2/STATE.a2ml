@@ -5,7 +5,7 @@
 [metadata]
 project = "svalinn"
 version = "0.1.0"
-last-updated = "2026-06-05"
+last-updated = "2026-06-26"
 status = "active"
 session = "machine-readable checkpoint — 2026-06-05"
 
@@ -59,6 +59,7 @@ merged = [
 ]
 decisions = [
   "D3 — svalinn migrates ReScript → Ephapax (migrate-then-prove); authority: docs/ephapax-migration/HANDOFF.adoc",
+  "D4 — keep SonarQube Cloud quality-gate analysis but permanently mute its GitHub PR summary comment (sonarqubecloud[bot]); server-side, UI-only (no repo trigger or lever exists); runbook: docs/ci/sonarcloud-pr-comments.adoc",
 ]
 
 [maintenance-status]
