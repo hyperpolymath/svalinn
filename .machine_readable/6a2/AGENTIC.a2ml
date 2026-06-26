@@ -5,7 +5,7 @@
 # Defines what AI agents can and cannot do in this repository.
 [metadata]
 version = "0.1.0"
-last-updated = "2026-06-05"
+last-updated = "2026-06-26"
 
 [agent-permissions]
 can-edit-source = true
@@ -25,6 +25,7 @@ can-create-files = true
 # - Never patch the pre-existing ReScript CI breakage — it is superseded by the Ephapax migration (D3)
 # - Never start porting to Ephapax without first completing the readiness spike (Stage 0 of HANDOFF.adoc)
 # - Never improvise an alternative migration target if the spike fails — surface to maintainer
+# - Never re-enable the SonarQube Cloud PR summary comment — it is intentionally muted (Decision D4); see docs/ci/sonarcloud-pr-comments.adoc
 
 [agent-workflow]
 # How AI agents should work here:
