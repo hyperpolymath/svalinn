@@ -146,15 +146,17 @@ jobs:
           key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json', '**/deno.lock') }}
           restore-keys: |
             ${{ runner.os }}-deno-
-      - name: Build svalinn binary
-        run: deno compile --allow-net --allow-read --allow-env -o dist/svalinn main.ts
-        working-directory: src
-      - name: Build svalinn-compose binary
-        run: deno compile --allow-net --allow-read --allow-env -o dist/svalinn-compose compose/cli.ts
-        working-directory: src
+      - name: Build svalinn gateway binary
+        # src/main.ts and src/compose/cli.ts were never created; since the
+        # .res→.affine migration, src/ holds AffineScript, not a Deno TS app.
+        # Build the real TS entrypoint — the MVP gateway — to match the Type
+        # Check job. Permissions mirror the gateway's runtime needs: Deno.serve
+        # (net), Deno.readTextFile (read), Deno.writeTextFile/makeTempFile/remove
+        # (write), Deno.env (env), Deno.Command for vordr/svalinn-gate (run).
+        run: deno compile --allow-net --allow-read --allow-write --allow-env --allow-run -o dist/svalinn tools/mvp/svalinn_gateway.ts
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.0
         with:
           name: svalinn-binaries-linux
-          path: src/dist/
+          path: dist/
           retention-days: 7
