@@ -152,7 +152,8 @@ jobs:
         # Deno-compilable entrypoint is the MVP gateway
         # (tools/mvp/svalinn_gateway.ts) — the same file the typecheck job checks.
         # The old src/main.ts and src/compose/cli.ts were never created, and there
-        # is no svalinn-compose CLI to build. When the AffineScript/Ephapax app
+        # is no svalinn-compose CLI to build. The task bakes the gateway's runtime
+        # permissions (net/read/write/env/run). When the AffineScript/Ephapax app
         # gains a compilable entrypoint, update the build task in src/deno.json and
         # both this job and local `deno task build` follow automatically.
         run: deno task build

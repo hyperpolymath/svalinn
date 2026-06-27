@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "license": "MPL-2.0",
   "tasks": {
-    "dev": "deno run --allow-net --allow-read --allow-env --watch ../tools/mvp/svalinn_gateway.ts",
-    "start": "deno run --allow-net --allow-read --allow-env ../tools/mvp/svalinn_gateway.ts",
-    "build": "deno compile --allow-net --allow-read --allow-env -o dist/svalinn ../tools/mvp/svalinn_gateway.ts",
+    "dev": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run --watch ../tools/mvp/svalinn_gateway.ts",
+    "start": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run ../tools/mvp/svalinn_gateway.ts",
+    "build": "deno compile --allow-net --allow-read --allow-write --allow-env --allow-run -o dist/svalinn ../tools/mvp/svalinn_gateway.ts",
     "test": "deno test --allow-net --allow-read --allow-env",
     "check": "deno check ../tools/mvp/svalinn_gateway.ts",
     "fmt": "deno fmt",
