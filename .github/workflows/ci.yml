@@ -146,17 +146,21 @@ jobs:
           key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json', '**/deno.lock') }}
           restore-keys: |
             ${{ runner.os }}-deno-
-      - name: Build svalinn gateway binary
-        # src/main.ts and src/compose/cli.ts were never created; since the
-        # .res→.affine migration, src/ holds AffineScript, not a Deno TS app.
-        # Build the real TS entrypoint — the MVP gateway — to match the Type
-        # Check job. Permissions mirror the gateway's runtime needs: Deno.serve
-        # (net), Deno.readTextFile (read), Deno.writeTextFile/makeTempFile/remove
-        # (write), Deno.env (env), Deno.Command for vordr/svalinn-gate (run).
-        run: deno compile --allow-net --allow-read --allow-write --allow-env --allow-run -o dist/svalinn tools/mvp/svalinn_gateway.ts
+      - name: Build svalinn binary
+        # Single source of truth: the `build` task in src/deno.json. Since the
+        # .res->.affine migration, src/ holds AffineScript and the only
+        # Deno-compilable entrypoint is the MVP gateway
+        # (tools/mvp/svalinn_gateway.ts) — the same file the typecheck job checks.
+        # The old src/main.ts and src/compose/cli.ts were never created, and there
+        # is no svalinn-compose CLI to build. The task bakes the gateway's runtime
+        # permissions (net/read/write/env/run). When the AffineScript/Ephapax app
+        # gains a compilable entrypoint, update the build task in src/deno.json and
+        # both this job and local `deno task build` follow automatically.
+        run: deno task build
+        working-directory: src
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.0
         with:
           name: svalinn-binaries-linux
-          path: dist/
+          path: src/dist/
           retention-days: 7
