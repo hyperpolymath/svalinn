@@ -147,10 +147,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-deno-
       - name: Build svalinn binary
-        run: deno compile --allow-net --allow-read --allow-env -o dist/svalinn main.ts
-        working-directory: src
-      - name: Build svalinn-compose binary
-        run: deno compile --allow-net --allow-read --allow-env -o dist/svalinn-compose compose/cli.ts
+        # Single source of truth: the `build` task in src/deno.json. Since the
+        # .res->.affine migration, src/ holds AffineScript and the only
+        # Deno-compilable entrypoint is the MVP gateway
+        # (tools/mvp/svalinn_gateway.ts) — the same file the typecheck job checks.
+        # The old src/main.ts and src/compose/cli.ts were never created, and there
+        # is no svalinn-compose CLI to build. When the AffineScript/Ephapax app
+        # gains a compilable entrypoint, update the build task in src/deno.json and
+        # both this job and local `deno task build` follow automatically.
+        run: deno task build
         working-directory: src
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.0
