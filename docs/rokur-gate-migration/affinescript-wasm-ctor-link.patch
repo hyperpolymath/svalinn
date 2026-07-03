@@ -1,0 +1,181 @@
+From ae956929613f72a3f90bb7931c81070e7bcea240 Mon Sep 17 00:00:00 2001
+From: hyperpolymath <paraordinate@yahoo.co.uk>
+Date: Sun, 21 Jun 2026 02:24:56 +0000
+Subject: [PATCH] fix(codegen): link imported enum constructors in WASM
+ gen_imports
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+A module importing an enum's value constructors (use M::{Some, None}) type-checks
+but failed to compile to WASM with Codegen.UnboundVariable "Function or variable
+not found: Some": the WASM backend's gen_imports linked only imported TopFn/
+TopConst, never TopType, so constructor tags were never registered in
+variant_tags. Non-WASM backends use flatten_imports + structural emission and
+were unaffected; the stdlib AOT gate only exercises the Deno-ESM backend, which
+is why this WASM gap went uncaught.
+
+#138 (PR #193) fixed the resolver/typecheck half (constructors resolve through
+the module path); this fixes the remaining WASM-codegen half. gen_imports now
+registers imported public enum constructors into variant_tags with their
+canonical positional tags (mirroring local TopType handling in gen_decl), and
+glob 'use M::*' brings enum constructors too. Adds a WASM-target cross-module
+constructor regression test — the coverage the Deno-only AOT gate missed.
+---
+ lib/codegen.ml                             | 46 +++++++++++++++++++++-
+ test/e2e/fixtures/CtorCallee.affine        | 10 +++++
+ test/e2e/fixtures/cross_ctor_caller.affine | 23 +++++++++++
+ test/test_e2e.ml                           | 21 ++++++++++
+ 4 files changed, 99 insertions(+), 1 deletion(-)
+ create mode 100644 test/e2e/fixtures/CtorCallee.affine
+ create mode 100644 test/e2e/fixtures/cross_ctor_caller.affine
+
+diff --git a/lib/codegen.ml b/lib/codegen.ml
+index 2b60b74..d362fce 100644
+--- a/lib/codegen.ml
++++ b/lib/codegen.ml
+@@ -3288,7 +3288,45 @@ let gen_imports (loader : Module_loader.t) (imports : import_decl list) (ctx : c
+         | _ -> None
+       ) loaded.mod_program.prog_decls in
+       match item with
+-      | None -> Ok ctx
++      | None ->
++        (* #138 follow-up — cross-module value CONSTRUCTORS.
++           The name is neither a fn nor a const, so it is either an imported
++           enum TYPE (`use prelude::{Option}`) or one of its value
++           constructors (`use prelude::{Some, None}`). Variant constructors
++           are not host-imported into WASM — the backend lowers them to
++           integer tags looked up in [variant_tags] (the `ExprVar … when
++           List.mem_assoc … variant_tags` construction path, and `gen_pattern`
++           match arms). #138 (PR #193) made the *resolver* resolve these
++           through the module path, but [gen_imports] never registered the
++           tags for WASM codegen, so `Some(x)` fell through to the call path
++           and raised `UnboundVariable "… Some"`. Register the whole enum's
++           constructors with their canonical positional tags — identical to
++           the local `TopType (TyEnum …)` handling in [gen_decl] — so
++           construction sites and match arms agree on tags. *)
++        let register_enum c variants =
++          List.fold_left (fun c_acc (idx, vd) ->
++            if List.mem_assoc vd.vd_name.name c_acc.variant_tags then c_acc
++            else { c_acc with
++                   variant_tags = (vd.vd_name.name, idx) :: c_acc.variant_tags }
++          ) c (List.mapi (fun i v -> (i, v)) variants)
++        in
++        let imported_enum_variants =
++          List.find_map (function
++            | TopType td
++              when (td.td_vis = Public || td.td_vis = PubCrate) ->
++              (match td.td_body with
++               | TyEnum variants
++                 when td.td_name.name = orig_name
++                   || List.exists
++                        (fun vd -> vd.vd_name.name = orig_name) variants ->
++                 Some variants
++               | _ -> None)
++            | _ -> None
++          ) loaded.mod_program.prog_decls
++        in
++        (match imported_enum_variants with
++         | Some variants -> Ok (register_enum ctx variants)
++         | None -> Ok ctx)
+       | Some (`Fn fd) ->
+         let ft = func_type_of_fn_decl fd in
+         let (type_idx, types_after) = intern_func_type ctx.types ft in
+@@ -3336,6 +3374,12 @@ let gen_imports (loader : Module_loader.t) (imports : import_decl list) (ctx : c
+            | TopConst { tc_vis; tc_name; _ }
+              when tc_vis = Public || tc_vis = PubCrate ->
+              Some (p, tc_name.name, None)
++           | TopType td when (td.td_vis = Public || td.td_vis = PubCrate) ->
++             (* #138 follow-up: glob `use M::*` also brings enum constructors.
++                Emit the type name; [process_one] expands to all constructors. *)
++             (match td.td_body with
++              | TyEnum _ -> Some (p, td.td_name.name, None)
++              | _ -> None)
+            | _ -> None
+          ) lm.mod_program.prog_decls)
+   in
+diff --git a/test/e2e/fixtures/CtorCallee.affine b/test/e2e/fixtures/CtorCallee.affine
+new file mode 100644
+index 0000000..632a7a9
+--- /dev/null
++++ b/test/e2e/fixtures/CtorCallee.affine
+@@ -0,0 +1,10 @@
++// SPDX-License-Identifier: MPL-2.0
++// SPDX-FileCopyrightText: 2026 hyperpolymath
++//
++// Callee module exporting an enum whose value constructors are imported
++// across a module boundary by cross_ctor_caller.affine. Mixed arity
++// (Circle/Square carry a payload; Dot is nullary) exercises both the
++// heap-boxed and the bare-tag construction paths in the WASM backend.
++module CtorCallee;
++
++pub type Shape = Circle(Int) | Square(Int) | Dot
+diff --git a/test/e2e/fixtures/cross_ctor_caller.affine b/test/e2e/fixtures/cross_ctor_caller.affine
+new file mode 100644
+index 0000000..f683b13
+--- /dev/null
++++ b/test/e2e/fixtures/cross_ctor_caller.affine
+@@ -0,0 +1,23 @@
++// SPDX-License-Identifier: MPL-2.0
++// SPDX-FileCopyrightText: 2026 hyperpolymath
++//
++// Cross-module enum CONSTRUCTOR import — WASM codegen regression fixture.
++// Imports a sibling module's enum type AND its value constructors, then both
++// constructs (Circle/Square/Dot) and matches on them. Before the gen_imports
++// fix, the WASM backend never registered imported constructor tags, so
++// `Circle(x)` fell through to the call path -> Codegen.UnboundVariable.
++// (#138 fixed the resolver half; this exercises the WASM-codegen half.)
++module cross_ctor_caller;
++use CtorCallee::{Shape, Circle, Square, Dot};
++
++pub fn mk(x: Int) -> Shape { Circle(x) }
++
++pub fn dot() -> Shape { Dot }
++
++pub fn classify(s: Shape) -> Int {
++  match s {
++    Circle(r) => r,
++    Square(w) => w,
++    Dot => 0
++  }
++}
+diff --git a/test/test_e2e.ml b/test/test_e2e.ml
+index 481f9cf..42ed6d1 100644
+--- a/test/test_e2e.ml
++++ b/test/test_e2e.ml
+@@ -3445,11 +3445,32 @@ let test_wasm_cross_module_const_compiles () =
+   | Error e, _ -> Alcotest.fail ("callee compile failed: " ^ e)
+   | _, Error e -> Alcotest.fail ("caller compile failed (regression for #107): " ^ e)
+ 
++let test_wasm_cross_module_constructor_compiles () =
++  (* Regression: imported enum value constructors (`use CtorCallee::{Circle,
++     Square, Dot}`) must be linked into WASM codegen. Before the fix,
++     [gen_imports] skipped imported [TopType], so the constructor tags were
++     never registered in [variant_tags] and `Circle(x)` fell through to the
++     call path, raising Codegen.UnboundVariable "Function or variable not
++     found: Circle". #138 (PR #193) fixed the resolver half; this is the
++     WASM-codegen half. *)
++  match compile_fixture_to_wasm (fixture "cross_ctor_caller.affine") with
++  | Ok m ->
++    (* Reaching Ok means codegen lowered the imported constructors (construct +
++       match, mixed arity) without the UnboundVariable early-out; the unit's
++       three public fns emit. *)
++    Alcotest.(check bool)
++      "caller compiles with imported constructors (>=3 funcs emitted)"
++      true (List.length m.funcs >= 3)
++  | Error e ->
++    Alcotest.fail
++      ("cross-module constructor compile failed (WASM constructor-link regression): " ^ e)
++
+ let cross_module_other_codegens_tests = [
+   Alcotest.test_case "flatten_imports inlines imported public fns"          `Quick test_flatten_imports_inlines_public_fns;
+   Alcotest.test_case "flatten_imports: local def shadows imported, no dup"  `Quick test_flatten_imports_dedup_local_wins;
+   Alcotest.test_case "flatten_imports inlines imported public consts (#107)" `Quick test_flatten_imports_inlines_public_const;
+   Alcotest.test_case "WASM gen_imports threads imported consts (#107)"      `Quick test_wasm_cross_module_const_compiles;
++  Alcotest.test_case "WASM gen_imports links imported constructors"         `Quick test_wasm_cross_module_constructor_compiles;
+ ]
+ 
+ (* ---- extern declarations (issues-drafts/04) ----
+-- 
+2.43.0
+

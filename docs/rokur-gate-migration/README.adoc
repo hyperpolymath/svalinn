@@ -20,3 +20,16 @@ keeping from it.
 * `../../deployment/security/` — the firewalld zones, ModSecurity config, and
   OpenLiteSpeed config referenced by `DEPLOYMENT.adoc`. These are
   language-independent infra config and should need no changes.
+* `affinescript-wasm-ctor-link.patch` — a compiler workaround the retired
+  copy carried (git-applied at build time) for an AffineScript WASM-codegen
+  bug: imported enum constructors weren't linked (`Codegen.UnboundVariable`
+  on `use M::{Some, None}` compiled to WASM). **Almost certainly already
+  fixed upstream** — `hyperpolymath/affinescript#602` ("fix(codegen): #138 —
+  link imported enum constructors into codegen", merged 2026-06-20) matches
+  this fix nearly verbatim and landed one day before this patch's local
+  commit date. This repo's own `.affine` files (28 of them, more than the
+  retired copy's 11) never needed this patch, which is consistent with the
+  fix already being present in whatever AffineScript version this repo
+  builds against. Kept for reference only — do not apply without first
+  confirming (e.g. by trying to compile a cross-module enum-constructor
+  import to WASM) that the bug has actually resurfaced.
