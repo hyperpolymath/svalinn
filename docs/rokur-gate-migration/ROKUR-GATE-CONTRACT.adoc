@@ -1,0 +1,92 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= Rokur secrets gate — behavioural contract
+
+This document exists because the working Rokur gate implementation lives only
+in the ReScript-era copy of svalinn (`hyperpolymath/stapeln`'s
+`container-stack/svalinn/src/gateway/Gateway.res` and `src/mcp/Server.res`,
+before that copy was retired in favour of this repo). ReScript is banned
+estate-wide, so that code is not portable as-is — this spec captures its
+*exact behaviour* so it can be reimplemented in AffineScript/TypeScript
+without re-deriving the retry/timeout/deny semantics from scratch.
+
+See the follow-up issue for the reimplementation task.
+
+== Purpose
+
+Before starting a container, svalinn asks Rokur (the secrets/policy gate) for
+authorization. This is a security control — get the semantics wrong and you
+either let unauthorized starts through (fails open) or block legitimate ones
+(fails closed too aggressively).
+
+== Configuration (environment variables)
+
+[cols="1,1,3"]
+|===
+| Variable | Default | Meaning
+
+| `ROKUR_ENDPOINT`
+| `http://localhost:9090`
+| Base URL of the Rokur service.
+
+| `ROKUR_GATE_ENABLED`
+| (unset = disabled — see note)
+| If not truthy, `authorizeContainerStart` short-circuits and returns "allowed" immediately without calling Rokur at all. **This is a fail-open default** — inherited as-is from the ReScript implementation; flag this to whoever reimplements it in case fail-closed is actually wanted.
+
+| `ROKUR_API_TOKEN`
+| `""` (empty)
+| Sent as the `X-Rokur-Token` request header.
+
+| `ROKUR_TIMEOUT_MS`
+| `2000`
+| Per-request timeout, clamped to `[100, 30000]`.
+
+| `ROKUR_RETRY_COUNT`
+| `1`
+| Max retry attempts, clamped to `[0, 5]`.
+|===
+
+== Request
+
+`POST {ROKUR_ENDPOINT}/v1/authorize-start`
+
+Headers: `Content-Type: application/json`, `X-Rokur-Token: {ROKUR_API_TOKEN}`.
+
+Body: `{"image": "<image>", "name": "<container name>"}` — `name` is omitted
+from the payload entirely when not supplied (not sent as `null`).
+
+Request is subject to `ROKUR_TIMEOUT_MS`.
+
+== Response handling (exact precedence, first match wins)
+
+. **Gate disabled** (`ROKUR_GATE_ENABLED` not truthy) → allow immediately, no
+  request sent.
+. **Transport/timeout failure** → if `attempt < ROKUR_RETRY_COUNT`, retry
+  (recursive, `attempt + 1`); otherwise return HTTP 503 with
+  `{error: <exception message, default "Rokur request failed">, rokurEndpoint, attempt}`.
+. **HTTP status >= 500** and `attempt < ROKUR_RETRY_COUNT` → retry.
+. **HTTP status == 409** → deny: HTTP 409,
+  `{error: "Rokur denied container start", rokur: <parsed response body>}`.
+. **HTTP 2xx (`response.ok`)** → parse body as JSON (on parse failure,
+  substitute `{error: "Rokur returned a non-JSON response"}`); read boolean
+  field `allowed`:
+    * `true` → allow (no response body, `None` in the ReScript source —
+      i.e. proceed with the container start as normal).
+    * `false` or missing → deny: HTTP 409,
+      `{error: "Rokur denied container start", rokur: <parsed response body>}`.
+. **Any other status** (4xx other than 409, or 5xx with retries exhausted) →
+  HTTP 503, `{error: <body.error, default "Rokur authorization request failed">, rokurEndpoint, attempt, rokurStatusCode, rokur: <parsed response body>}`.
+
+Retries are logged (`Log.warn`) with `{attempt, maxRetries, rokurStatusCode?}`
+metadata before each retry — reproduce this for observability parity.
+
+== What this spec does NOT cover
+
+The MCP server-side call site (`Server.res:121`, "Validates via PolicyEngine,
+checks Rokur gate, then delegates to Vordr") — i.e. *where* in the request
+pipeline this gate is invoked relative to policy validation and the Vördr
+delegation. Read that call site in the retired ReScript copy (available in
+`hyperpolymath/stapeln` git history prior to its removal, or in this repo's
+`git log` around the commit that added this document) before wiring the
+AffineScript/TypeScript version into the pipeline — this document only
+covers `authorizeContainerStart`'s own request/response behaviour, not its
+place in the surrounding call graph.
