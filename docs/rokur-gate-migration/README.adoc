@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= Rokur gate + ops docs, ported from the retired ReScript copy
+
+`hyperpolymath/stapeln`'s `container-stack/svalinn/` was a second, diverged
+copy of this repo — written in ReScript (now banned estate-wide) rather than
+this repo's AffineScript/TypeScript line. That copy had two things this repo
+never got: a working Rokur secrets-gate integration, and deployment/security
+hardening docs. The nested copy has been retired; these are what's worth
+keeping from it.
+
+* `ROKUR-GATE-CONTRACT.adoc` — the Rokur gate's exact request/response
+  behaviour, written from reading the (now-retired) ReScript source, so it
+  can be reimplemented here without re-deriving the semantics. Start here.
+* `API.adoc`, `DEPLOYMENT.adoc`, `TESTING.adoc` — carried over as-is from the
+  ReScript copy. They describe that implementation's specifics (file paths,
+  build commands, module names) and **will need editing** to match this
+  repo's actual AffineScript/TypeScript structure before they're accurate —
+  kept here for the operational knowledge (firewalld/ModSecurity/OpenLiteSpeed
+  hardening steps, test strategy) rather than as ready-to-follow docs.
+* `../../deployment/security/` — the firewalld zones, ModSecurity config, and
+  OpenLiteSpeed config referenced by `DEPLOYMENT.adoc`. These are
+  language-independent infra config and should need no changes.
